@@ -39,13 +39,13 @@ node --version   # v18.x or higher
 npm --version    # v9.x or higher
 git --version    # v2.x or higher
 
-# Install Node.js (if not installed)
-# Ubuntu/Debian:
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
+# Backend
+cd backend
+npm install
+npm run dev &
+cd ..
 
-# Mac:
-brew install node
-
-# Windows:
-# Download from https://nodejs.org/
+# Frontend
+cd frontend
+npm install
+npm start &
