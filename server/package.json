@@ -6,13 +6,18 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
-    "bcrypt": "^6.0.0",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "dotenv": "^17.4.2",
+    "ejs": "~2.6.1",
     "express": "~4.16.1",
-    "jsonwebtoken": "^9.0.3",
+    "http-errors": "~1.6.3",
     "morgan": "~1.9.1",
     "pg": "^8.22.0"
-  }
+  },
+  "description": "",
+  "main": "app.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

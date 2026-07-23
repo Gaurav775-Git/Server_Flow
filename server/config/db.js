@@ -1,20 +1,22 @@
-const path = require('path');
-const dotenv = require('dotenv');
-
-// Support running the server from either the project root or the server folder.
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-const { Pool } = require('pg');
-
-const databaseUrl = new URL(process.env.DATABASE_URL);
-// Let the explicit SSL object below control certificate verification.
-databaseUrl.searchParams.delete('sslmode');
+require('dotenv').config();
+const {Pool, Client} = require('pg');
 
 const pool = new Pool({
-  connectionString: databaseUrl.toString(),
-  ssl: {
-    rejectUnauthorized: false,
-  },
+    connectionString: process.env.Database_Url,
+    ssl:{
+        rejectUnauthorized: false
+    }
 });
 
-module.exports = pool;
+pool.connect((err, client , release)=>{
+    if(err){
+        console.log(err);
+    }
+    else{
+        console.log("Database connected");
+    }
+})
+
+const query = (text,params)=> pool.query(text,params);
+
+module.exports = {query,pool};
