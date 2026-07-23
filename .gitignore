@@ -224,17 +224,17 @@ serverless.yml.local
 *.tfstate.*
 .terraform/
 
-# # Optional - Uncomment if needed
-# # ====================================
-# # REACT SPECIFIC
-# # ====================================
-# # /build
-# # /public/build
-# 
-# # ====================================
-# # NODE SPECIFIC
-# # ====================================
-# # .env
-# # node_modules/
-# # dist/
-# # coverage/
+Optional - Uncomment if needed
+====================================
+REACT SPECIFIC
+====================================
+/build
+/public/build
+
+====================================
+NODE SPECIFIC
+====================================
+.env
+node_modules/
+dist/
+coverage/
