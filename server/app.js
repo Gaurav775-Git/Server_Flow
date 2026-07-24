@@ -4,6 +4,7 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var { query } = require('./config/db');  //   Correct import
+var getusers = require('./routes/userRoute');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
@@ -19,9 +20,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/',usersRouter);
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
+app.use('/', getusers);
 
 //   FIXED: Test route
 app.get('/test', async (req, res) => {
