@@ -5,7 +5,7 @@ const LoginLeftIcon = () => {
     <>
       <div
         className="absolute -left-40 top-1/2 -translate-y-1/2
-          w-[600px] h-[600px] rounded-full blur-[180px]"
+          w-150 h-150 rounded-full blur-[180px]"
         style={{
           background: "rgba(42, 67, 82, 0.45)",
         }}
