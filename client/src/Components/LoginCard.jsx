@@ -1,6 +1,21 @@
 import React from "react";
+import { useState } from "react";
 
 const LoginCard = () => {
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: [e.target.value] });
+  };
+
+  const onSubmit = (e) => {
+    e.preventDefault();
+    console.log(formData);
+  };
+
   return (
     <div
       className="w-full max-w-110 h-140 bg-[#161D27]/90 z-20 rounded-3xl backdrop-blur-xl relative
@@ -26,7 +41,11 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
             Welcome Back
           </h2>
           <div className="form-box flex flex-col items-center rounded-3xl  w-full p-4">
-            <form action="" className="flex flex-col gap-5 w-full">
+            <form
+              action=""
+              onSubmit={onSubmit}
+              className="flex flex-col gap-5 w-full "
+            >
               <div className="flex flex-col gap-1">
                 <label
                   htmlFor="email"
@@ -39,6 +58,8 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
                   placeholder="name@company.com"
                   id="email"
                   name="email"
+                  value={formData.email}
+                  onChange={handleChange}
                   className="w-full bg-[#0B0E14] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
           outline-none"
                 />
@@ -55,6 +76,8 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
                   placeholder="Password"
                   id="password"
                   name="password"
+                  value={formData.password}
+                  onChange={handleChange}
                   className="w-full bg-[#0B0E14] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
           outline-none"
                 />
