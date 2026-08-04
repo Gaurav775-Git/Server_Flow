@@ -5,6 +5,7 @@ A platform that lets you visually design backend workflows (like n8n) and automa
 ---
 
 ## 📋 Table of Contents
+
 - [Technology Stack](#-technology-stack)
 - [Prerequisites](#-prerequisites)
 - [Project Structure](#-project-structure)
@@ -19,13 +20,13 @@ A platform that lets you visually design backend workflows (like n8n) and automa
 
 ## 🛠️ Technology Stack
 
-| Component | Technology |
-|-----------|------------|
-| **Frontend** | React 18 + React Flow |
-| **Backend** | Node.js + Express |
-| **Database** | MongoDB (Optional) |
-| **Code Generation** | Custom Engine |
-| **Deployment** | Docker / Vercel |
+| Component           | Technology            |
+| ------------------- | --------------------- |
+| **Frontend**        | React 18 + React Flow |
+| **Backend**         | Node.js + Express     |
+| **Database**        | MongoDB (Optional)    |
+| **Code Generation** | Custom Engine         |
+| **Deployment**      | Docker / Vercel       |
 
 ---
 
@@ -49,3 +50,32 @@ cd ..
 cd frontend
 npm install
 npm start &
+
+# Don't push you code on main branch follow these instruction :-
+
+# Get latest code
+git checkout main
+git pull origin main
+
+# Create feature branch
+git checkout -b feature/[ your feature name ]
+
+# Work on the feature...
+
+# Check changes
+git status
+
+# Stage changes
+git add .
+
+# Commit
+git commit -m "feat: implement login API"
+
+# First push your branch on github
+git push -u origin feature/[ your feature name ]
+
+# Future work on the same branch...
+git add .
+git commit -m "fix: improve login validation"
+git push
+```
