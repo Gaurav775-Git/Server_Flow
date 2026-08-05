@@ -1,25 +1,28 @@
 require("dotenv").config();
 const { query } = require("../config/db");
-const cookie = require("cookie");
+
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const {
+  registerValidationSchema,
+} = require("../schema/registerValidationSchema");
 const { loginValidationSchema } = require("../schema/loginValidationSchema");
-const { success } = require("zod");
-const { config } = require("dotenv");
+const { createTokenAndSetCookie } = require("../utils/jwt");
 
 const register = async (req, res) => {
   try {
-    const validateData = validateSchema.safeParse(req.body);
-    if (!validateData.success) {
-      const zodError = validateData.error.issues.map(
+    const validatedData = registerValidationSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      const zodError = validatedData.error.issues.map(
         (issues) => issues.message,
       );
       return res.status(400).json({
         success: false,
-        message: "bad request",
+        message: "validation invalid",
+        errors: zodError,
       });
     }
-    const { name, email, password } = validateData.data;
+    const { name, email, password } = validatedData.data;
 
     const existingUser = await query("SELECT * FROM users WHERE email = $1", [
       email,
@@ -35,30 +38,21 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const result = await query(
-      "INSERT INTO users(name , email , password_hash) VALUES($1,$2,$3) RETURNING id,name,email",
+      "INSERT INTO users(name , email , password_hash) VALUES($1,$2,$3) RETURNING id,name,email,role",
       [name, email, hashedPassword],
     );
-    console.log(result.rows[0]);
-    const { id, role } = result.rows[0];
-    const secret = process.env.JWT_SECRET;
-    const payload = {
+    const user = result.rows[0];
+    const { id, email: userEmail, role } = user;
+    createTokenAndSetCookie(res, {
       id,
-      email,
+      email: userEmail,
       role,
-    };
-    let token = jwt.sign(payload, secret, {
-      expiresIn: "15m",
     });
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
-    });
+
     res.status(201).json({
       success: true,
       message: "user registered",
-      user: result.rows[0],
+      user: user,
     });
   } catch (err) {
     console.error(err.message);
@@ -70,25 +64,24 @@ const register = async (req, res) => {
 };
 const login = async (req, res) => {
   try {
-    const validateData = loginValidationSchema.safeParse(req.body);
-    if (!validateData.success) {
-      const zodError = validateData.error.issues.map(
+    const validatedData = loginValidationSchema.safeParse(req.body);
+    if (!validatedData.success) {
+      const zodError = validatedData.error.issues.map(
         (issues) => issues.message,
       );
       return res.status(400).json({
         success: false,
-        message: "bad request",
+        message: "validation invalid",
+        errors: zodError,
       });
     }
-    const { email, password } = validateData.data;
-    const getUserByEmail = async (email) => {
-      return await query(
-        "SELECT id ,email , password_hash,role FROM users WHERE email =$1 ",
-        [email],
-      );
-    };
+    const { email, password } = validatedData.data;
 
-    const user = await getUserByEmail(email);
+    const user = await query(
+      "SELECT id ,email , password_hash,role FROM users WHERE email =$1 ",
+      [email],
+    );
+
     if (user.rows.length === 0) {
       return res.status(401).json({
         success: false,
@@ -97,35 +90,26 @@ const login = async (req, res) => {
     }
     const hashedPassword = user.rows[0].password_hash;
 
-    const comparePassword = await bcrypt.compare(password, hashedPassword);
-    if (!comparePassword) {
+    const isPasswordValid = await bcrypt.compare(password, hashedPassword);
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: "invalid email or password",
       });
     }
-    const { id, role } = user.rows[0];
-    const secret = process.env.JWT_SECRET;
-    const payload = {
+    const { id, email: userEmail, role } = user.rows[0];
+    createTokenAndSetCookie(res, {
       id,
-      email,
+      email: userEmail,
       role,
-    };
-    let token = jwt.sign(payload, secret, {
-      expiresIn: "15m",
     });
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
-    });
+
     res.status(200).json({
       success: true,
       message: "user logged in successfully ",
       user: {
         id,
-        emai,
+        email,
         role,
       },
     });
