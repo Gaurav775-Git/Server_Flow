@@ -55,10 +55,11 @@ body {
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
@@ -109,3 +110,31 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* CSS for Announcement Bar Starts */
+
+.announcement-bar {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+
+  background-color: #1c1f25;
+  color: #d6d8df;
+
+  font-size: 12px;
+}
+
+.announcement-bar span:first-child {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #8f929b;
+}
+
+.announcement-bar a {
+  color: #48cfff;
+  text-decoration: none;
+}
+
+/* CSS for Announcement Bar Ends */

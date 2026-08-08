@@ -1,0 +1,148 @@
+.navbar {
+  width: 100%;
+  height: 64px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 22px;
+  box-sizing: border-box;
+
+  background-color: #0c0f14;
+  border-bottom: 1px solid #252a32;
+}
+
+
+/* =========================
+   LOGO
+========================= */
+
+.navbar-logo {
+  width: 48px;
+  height: 48px;
+
+  margin-right: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-logo img {
+  width: 42px;
+  height: 42px;
+
+  object-fit: contain;
+  display: block;
+}
+
+
+/* =========================
+   NAVIGATION LINKS
+========================= */
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  color: #a7adb8;
+  text-decoration: none;
+
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: white;
+}
+
+
+/* =========================
+   RIGHT SIDE
+========================= */
+
+.navbar-actions {
+  margin-left: auto;
+
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+
+/* Search & Account icons */
+
+.icon-button {
+  width: 20px;
+  height: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #a7adb8;
+
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: white;
+}
+
+
+/* Contact Sales */
+
+.contact-link {
+  color: #a7adb8;
+
+  text-decoration: none;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.contact-link:hover {
+  color: white;
+}
+
+
+/* Start Building */
+
+.start-button {
+  width: 104px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-color: #42c7f4;
+  color: #071018;
+
+  border-radius: 10px;
+
+  text-decoration: none;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  white-space: nowrap;
+
+  box-sizing: border-box;
+}
+
+.start-button:hover {
+  opacity: 0.9;
+}
