@@ -3,7 +3,7 @@ import NavBar from '../components/NavBar';
 
 const Home = () => {
   return (
-    <div className="bg-[#0b0e14] min-h-screen">
+    <div className="bg-[#05090E] min-h-screen">
       <NavBar />
       {/* Rest of your content */}
       <Footer />
