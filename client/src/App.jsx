@@ -1,9 +1,15 @@
 import Home from "./pages/Home";
 import DashboardPage from "./pages/DashboardPage";
-import "./App.css";
+import "./index.css";
+import DragAndDrop from "./components/sections/dashboard/DragAndDrop";
 
 const App = () => {
-  return window.location.pathname === "/dashboard" ? <DashboardPage /> : <Home />;
+  // return window.location.pathname === "/dashboard" ? <DashboardPage /> : <Home />;
+  return (
+    <>
+      <DragAndDrop />
+    </>
+  );
 };
 
 export default App;
