@@ -31,7 +31,7 @@ export const nodeTypes = [
   },
   {
     type: "JWT",
-    label: "jwt",
+    label: "JWT",
     category: "AUTH",
   },
 ];
