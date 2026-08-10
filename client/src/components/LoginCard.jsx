@@ -1,4 +1,3 @@
-import React from "react";
 import { useState } from "react";
 
 const LoginCard = () => {
@@ -60,7 +59,7 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full bg-[#0B0E14] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
+                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
           outline-none"
                 />
               </div>
@@ -78,7 +77,7 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full bg-[#0B0E14] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
+                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base  placeholder:text-[#374146]
           outline-none"
                 />
               </div>
@@ -92,7 +91,7 @@ border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,
                   py-3
                   text-lg
                   font-medium
-                text-[#0B0E14]
+                text-[#05090E]
                   transition-all
                   duration-300
                 hover:bg-[#2CC6EB]
