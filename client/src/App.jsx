@@ -1,13 +1,13 @@
 import Home from "./pages/Home";
 import DashboardPage from "./pages/DashboardPage";
 import "./index.css";
-import DragAndDrop from "./components/sections/dashboard/DragAndDrop";
+import Canvas from "./components/sections/dashboard/Canvas";
 
 const App = () => {
   // return window.location.pathname === "/dashboard" ? <DashboardPage /> : <Home />;
   return (
     <>
-      <DragAndDrop />
+      <Canvas />
     </>
   );
 };

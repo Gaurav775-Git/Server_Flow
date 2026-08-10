@@ -28,7 +28,7 @@ const initialNodes = [
 
 const initialEdges = [];
 
-const DragAndDrop = () => {
+const Canvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgeChange] = useEdgesState(initialEdges);
 
@@ -39,21 +39,21 @@ const DragAndDrop = () => {
   return (
     <ReactFlowProvider>
       <div className="w-full h-screen">
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgeChange}
-      onConnect={onConnect}
-      fitView
-    >
-      <Background />
-      <Controls />
-      <MiniMap />
-    </ReactFlow>
-    </div>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgeChange}
+          onConnect={onConnect}
+          fitView
+        >
+          <Background />
+          <Controls />
+          <MiniMap />
+        </ReactFlow>
+      </div>
     </ReactFlowProvider>
   );
 };
 
-export default DragAndDrop;
+export default Canvas;
