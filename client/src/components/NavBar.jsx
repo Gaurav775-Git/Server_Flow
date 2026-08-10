@@ -52,9 +52,9 @@ const NavBar = () => {
               Contact Sales
             </button>
           </div>
-          <button className="bg-[#4cd6fb] text-[#003642] px-6 py-2.5 rounded-full font-bold hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20">
+          <a href="/dashboard" className="bg-[#4cd6fb] text-[#003642] px-6 py-2.5 rounded-full font-bold hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20">
             Start Building
-          </button>
+          </a>
         </div>
       </div>
     </nav>
