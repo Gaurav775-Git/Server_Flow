@@ -36,15 +36,27 @@ const Canvas = () => {
     setEdges((edges) => addEdge(connection, edges));
   };
 
+  const onDropEvent = (event) => {
+    const data = event.dataTransfer.getData("application/reactflow");
+   
+    if (!data) {
+      return;
+    }
+     const node = JSON.parse(data);
+    console.log(node);
+  };
+
   return (
     <ReactFlowProvider>
-      <div className="w-full h-screen">
+      <div className="w-full h-full">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgeChange}
           onConnect={onConnect}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={onDropEvent}
           fitView
         >
           <Background />
