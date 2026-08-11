@@ -7,63 +7,71 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  useReactFlow,
 } from "@xyflow/react";
 
-const initialNodes = [
-  {
-    id: "1",
-    position: { x: 100, y: 100 },
-    data: {
-      label: "API",
-    },
-  },
-  {
-    id: "2",
-    position: { x: 400, y: 100 },
-    data: {
-      label: "DATABASE",
-    },
-  },
-];
+const initialNodes = [];
 
 const initialEdges = [];
 
-const Canvas = () => {
+const FlowCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgeChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { screenToFlowPosition } = useReactFlow();
 
   const onConnect = (connection) => {
+    console.log("connection :", connection);
     setEdges((edges) => addEdge(connection, edges));
   };
-
   const onDropEvent = (event) => {
     const data = event.dataTransfer.getData("application/reactflow");
-   
+
     if (!data) {
       return;
     }
-     const node = JSON.parse(data);
-    console.log(node);
+    const node = JSON.parse(data);
+    const position = screenToFlowPosition({
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    const newNode = {
+      id: crypto.randomUUID(),
+      position,
+      data: {
+        type: node.type,
+        label: node.label,
+        category: node.category,
+      },
+    };
+    console.log(newNode);
+    setNodes((nodes) => [...nodes, newNode]);
   };
 
   return (
+    <div className="w-full h-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={onDropEvent}
+        fitView
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
+    </div>
+  );
+};
+
+const Canvas = () => {
+  return (
     <ReactFlowProvider>
-      <div className="w-full h-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgeChange}
-          onConnect={onConnect}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={onDropEvent}
-          fitView
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-        </ReactFlow>
-      </div>
+      <FlowCanvas />
     </ReactFlowProvider>
   );
 };
