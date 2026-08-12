@@ -13,7 +13,7 @@ const App = () => {
   //       <Canvas />
   //     </main>
   //   </div>
-  );
+  // );
 };
 
 export default App;
