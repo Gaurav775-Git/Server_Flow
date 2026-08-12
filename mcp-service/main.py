@@ -34,16 +34,18 @@ async def chat(req: ChatRequest):
                       for t in mcp_tools]
 
             history.append({"role": "user", "content": req.message})
-            msg = ask_llm(history, tools)
 
-            if msg.get("tool_calls"):
-                history.append(msg)
-                for call in msg["tool_calls"]:
-                    args = json.loads(call["function"]["arguments"])
-                    result = await session.call_tool(call["function"]["name"], args)
-                    history.append({"role": "tool", "tool_call_id": call["id"],
-                                     "content": result.content[0].text})
+            while True:
                 msg = ask_llm(history, tools)
 
-            history.append({"role": "assistant", "content": msg["content"]})
-            return {"reply": msg["content"]}
+                if msg.get("tool_calls"):
+                    history.append(msg)
+                    for call in msg["tool_calls"]:
+                        args = json.loads(call["function"]["arguments"])
+                        result = await session.call_tool(call["function"]["name"], args)
+                        history.append({"role": "tool", "tool_call_id": call["id"],
+                                         "content": result.content[0].text})
+                    continue  
+                
+                history.append({"role": "assistant", "content": msg["content"]})
+                return {"reply": msg["content"]}
