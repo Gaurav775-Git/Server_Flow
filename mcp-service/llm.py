@@ -18,6 +18,11 @@ def ask_llm(messages, tools=None):
         headers={"Authorization": f"Bearer {API_KEY}"},
         json=payload,
     )
+
+    if response.status_code != 200:
+        print("LLM ERROR:", response.status_code, response.text)
+        raise Exception(f"LLM request failed: {response.status_code}")
+
     return response.json()["choices"][0]["message"]
 
 
