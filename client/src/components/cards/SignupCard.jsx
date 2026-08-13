@@ -1,7 +1,24 @@
+import { useState } from "react";
 const SignupCard = () => {
+  const [createUser, setCreateUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const handleChange = (event) => {
+    setCreateUser({ ...createUser, [event.target.name]: event.target.value });
+    console.log(event.target.name);
+  };
+
+  const onSubmit = (event) => {
+    event.preventDefault();
+    console.log(createUser);
+  };
   return (
     <div
-      className="w-full max-w-110 h-155 bg-[#161D27]/90 z-20 rounded-3xl backdrop-blur-xl relative
+      className="w-full max-w-110 h-162 bg-[#161D27]/90 z-20 rounded-3xl backdrop-blur-xl relative
   border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,211,238,0.08)]
   text-white text-2xl"
     >
@@ -29,7 +46,7 @@ const SignupCard = () => {
           </h2>
 
           <div className="form-box flex flex-col items-center rounded-3xl w-full p-4">
-            <form className="flex flex-col gap-4 w-full">
+            <form className="flex flex-col gap-4 w-full" onSubmit={onSubmit}>
               {/* Name */}
               <div className="flex flex-col gap-1">
                 <label
@@ -41,9 +58,11 @@ const SignupCard = () => {
 
                 <input
                   type="text"
-                  placeholder="Harsh Agarwal"
+                  placeholder="Jhon Smith"
                   id="name"
                   name="name"
+                  onChange={handleChange}
+                  value={createUser.name}
                   className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
               placeholder:text-[#374146] outline-none"
                 />
@@ -63,6 +82,8 @@ const SignupCard = () => {
                   placeholder="name@company.com"
                   id="email"
                   name="email"
+                  onChange={handleChange}
+                  value={createUser.email}
                   className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
               placeholder:text-[#374146] outline-none"
                 />
@@ -79,9 +100,11 @@ const SignupCard = () => {
 
                 <input
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Create a new password"
                   id="password"
                   name="password"
+                  onChange={handleChange}
+                  value={createUser.password}
                   className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
               placeholder:text-[#374146] outline-none"
                 />
@@ -101,6 +124,8 @@ const SignupCard = () => {
                   placeholder="Confirm your password"
                   id="confirmPassword"
                   name="confirmPassword"
+                  onChange={handleChange}
+                  value={createUser.confirmPassword}
                   className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
               placeholder:text-[#374146] outline-none"
                 />
