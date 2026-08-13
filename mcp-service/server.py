@@ -37,8 +37,19 @@ def create_file(filename , content: str)->str:
     with open(path , "w") as f:
         f.write(content)
 
-    return f"file is created with name {filename}"    
-    
+    return f"file is created with name {filename}"
+
+@mcp.tool()
+def create_folder(foldername: str) -> str:
+    """Create a new folder in the server's directory. Fails if it already exists."""
+    path = os.path.join(BASE_DIR, os.path.basename(foldername))
+
+    if os.path.exists(path):
+        return f"Folder {foldername} already exists in the directory."
+
+    os.mkdir(path)
+
+    return f"Folder {foldername} created successfully."           
 
 
 if __name__ == "__main__":
