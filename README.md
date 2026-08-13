@@ -43,19 +43,20 @@ git --version    # v2.x or higher
 # Backend
 cd backend
 npm install
-npm run dev &
+npm start &
 cd ..
 
 # Frontend
 cd frontend
 npm install
-npm start &
+npm run dev &
 
 # Don't push you code on main branch follow these instruction :-
 
 # Get latest code
 git checkout main
 git pull origin main
+npm install
 
 # Create feature branch
 git checkout -b feature/[ your feature name ]
@@ -69,10 +70,10 @@ git status
 git add .
 
 # Commit
-git commit -m "feat: implement login API"
+git commit -m "feat: [your commit heading]" -m "[description of your commit]"
 
 # First push your branch on github
-git push -u origin feature/[ your feature name ]
+git push -u origin feature/[ your feature branch name ]
 
 # Future work on the same branch...
 git add .
