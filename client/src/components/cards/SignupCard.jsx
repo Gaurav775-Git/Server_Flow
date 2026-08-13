@@ -9,7 +9,6 @@ const SignupCard = () => {
 
   const handleChange = (event) => {
     setCreateUser({ ...createUser, [event.target.name]: event.target.value });
-    console.log(event.target.name);
   };
 
   const onSubmit = (event) => {
