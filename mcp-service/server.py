@@ -40,16 +40,16 @@ def create_file(filename , content: str)->str:
     return f"file is created with name {filename}"
 
 @mcp.tool()
-def create_folder(foldername:str)->str:
-    """Create folder when user ask to and organised the files accordingly ."""
-    path = os.path.json(BASE_DIR , os.path.basename(foldername))
+def create_folder(foldername: str) -> str:
+    """Create a new folder in the server's directory. Fails if it already exists."""
+    path = os.path.join(BASE_DIR, os.path.basename(foldername))
 
     if os.path.exists(path):
-        return f"Foder exists {foldername} in the directory ."
+        return f"Folder {foldername} already exists in the directory."
 
     os.mkdir(path)
 
-    return f"Folder and files are created respectivelly."            
+    return f"Folder {foldername} created successfully."           
 
 
 if __name__ == "__main__":
