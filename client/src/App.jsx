@@ -12,23 +12,17 @@ import ServerNode from "./components/sections/dashboard/nodes/ServerNode";
 
 const App = () => {
   return (
-    <div>
-      
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/playground" element={<Playground_Page />} />
+        <Route path="/newproject" element={<NewProject />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Signup />} />
+      </Routes>
+    </Router>
   );
-
-  // return (
-  //   <Router>
-  //     <Routes>
-  //       <Route path="/" element={<Home />} />
-  //       <Route path="/dashboard" element={<DashboardPage />} />
-  //       <Route path="/playground" element={<Playground_Page />} />
-  //       <Route path="/newproject" element={<NewProject />} />
-  //       <Route path="/login" element={<Login />} />
-  //       <Route path="/register" element={<Signup />} />
-  //     </Routes>
-  //   </Router>
-  // );
 };
 
 export default App;

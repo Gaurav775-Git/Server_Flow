@@ -9,6 +9,7 @@ import {
   addEdge,
   useReactFlow,
 } from "@xyflow/react";
+import { CustomNode } from "../../utils/ReactFlowCustomNodes";
 
 const initialNodes = [];
 
@@ -37,6 +38,7 @@ const FlowCanvas = () => {
 
     const newNode = {
       id: crypto.randomUUID(),
+      type: "serverNode",
       position,
       data: {
         type: node.type,
@@ -53,6 +55,7 @@ const FlowCanvas = () => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={CustomNode}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
