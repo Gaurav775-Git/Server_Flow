@@ -1,4 +1,7 @@
 import json
+import shutil
+import os
+from fastapi.responses import FileResponse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,6 +22,15 @@ history = []
 
 class ChatRequest(BaseModel):
     message: str
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
+
+
+@app.get("/download")
+async def download_project():
+    zip_path = shutil.make_archive("project_export", "zip", BASE_DIR)
+    return FileResponse(zip_path, media_type="application/zip", filename="project.zip")    
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
