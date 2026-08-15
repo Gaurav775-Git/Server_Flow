@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Send } from 'lucide-react'
+import Build_Button from '../ui/Build_Button'
 
 const Chat_Box = () => {
   const [expand , setexpand] = useState(false);
@@ -18,12 +19,13 @@ const Chat_Box = () => {
     reset()
   }
 
+
   if(!expand){
     return (
       <button 
       onClick={()=>{setexpand(true)}}
-      className="absolute bottom-5 right-4 rounded-lg bg-[lime] px-4 py-2 text-black shadow-lg">
-        Start Build ⚙️
+      className="absolute bottom-5 right-4 rounded-lg  px-4 py-2 text-black shadow-lg">
+        <Build_Button name="Build"/>
       </button>
     )
   }
