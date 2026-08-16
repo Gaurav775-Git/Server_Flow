@@ -8,7 +8,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Playground_Page from "./pages/Playground_Page";
 import NewProject from "./pages/NewProject";
-import ServerNode from "./components/sections/dashboard/nodes/ServerNode";
 
 const App = () => {
   return (
