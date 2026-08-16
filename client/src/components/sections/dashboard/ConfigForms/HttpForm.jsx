@@ -11,11 +11,12 @@ const HttpForm = ({ node, onSave }) => {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // onSave(formData);
+    
   };
 
   const onSubmit = (e) => {
     e.preventDefault();
+    onSave(formData);
     console.log(formData);
   };
   return (

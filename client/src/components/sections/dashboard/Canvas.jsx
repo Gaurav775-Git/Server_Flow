@@ -26,23 +26,23 @@ const FlowCanvas = () => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [showConfig, setShowConfig] = useState(false);
 
-  // const handleConfigSave = (config) => {
-  //   setNodes((nodes) =>
-  //     nodes.map((node) =>
-  //       node.id === selectedNode.id
-  //         ? {
-  //             ...node,
-  //             data: {
-  //               ...node.data,
-  //               configured: true,
-  //               config: config,
-  //             },
-  //           }
-  //         : node,
-  //     ),
-  //   );
-  //   setShowConfig(false);
-  // };
+  const handleConfigSave = (config) => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === selectedNode.id
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                configured: true,
+                config: config,
+              },
+            }
+          : node,
+      ),
+    );
+    setShowConfig(false);
+  };
 
   const renderConfigForm = () => {
     if (!selectedNode) {
