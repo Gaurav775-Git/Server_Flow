@@ -6,7 +6,7 @@ const ProductCard = ({
   linkText,
 }) => {
   return (
-    <div className="border border-[#20242d] rounded-lg p-7 flex flex-col min-h-[340px]">
+    <div className="border text-white border-[#20242d] rounded-lg p-7 flex flex-col min-h-[340px]">
       
       {/* Icon */}
       <div className="mb-12">
@@ -30,7 +30,7 @@ const ProductCard = ({
 
       {/* Bottom link */}
       <div className="mt-auto pt-6 border-t border-[#20242d] flex items-center justify-between">
-        <span className="text-[9px] tracking-[0.15em] uppercase font-bold text-[#737985]">
+        <span className="text-[10px] tracking-[0.05em] uppercase font-black text-[#737985]">
           {linkText}
         </span>
 

@@ -1,8 +1,9 @@
 import React from 'react'
+import Chat_Box from '../components/chat_box/Chat_Box'
 
 const Playground_Page = () => {
   return (
-    <div className="relative w-full h-screen bg-[#0d1117] overflow-hidden">
+    <main className="relative h-screen w-full overflow-hidden bg-[#0d1117]">
       <div
         className="absolute inset-0"
         style={{
@@ -19,10 +20,12 @@ const Playground_Page = () => {
       />
 
       <div
-        className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full opacity-[0.07] blur-[120px] pointer-events-none"
+        className="pointer-events-none absolute left-1/3 top-1/4 h-[500px] w-[500px] rounded-full opacity-[0.07] blur-[120px]"
         style={{ background: '#00b4d8' }}
       />
-    </div>
+
+      <Chat_Box />
+    </main>
   )
 }
 
