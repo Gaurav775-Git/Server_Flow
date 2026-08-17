@@ -45,7 +45,7 @@ const Sidebar = () => {
   const authNodes = nodeTypes.filter((node) => node.category === "AUTH");
 
   return (
-    <section className="flex h-screen w-72 flex-col border-r border-gray-800 bg-gray-950">
+    <section className="flex h-screen w-80 flex-col border-r border-gray-800 bg-gray-950">
       <div className="flex items-center gap-2.5 border-b border-gray-800 px-5 py-5">
         <img src={logo} alt="ServerFlow logo" className="h-8 w-8 rounded-lg object-cover" />
         <h2 className="text-[15px] font-semibold tracking-tight text-white">
