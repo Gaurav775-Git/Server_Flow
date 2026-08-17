@@ -1,3 +1,4 @@
+import Chat_Box from "../components/chat_box/Chat_Box";
 import Canvas from "../components/sections/dashboard/Canvas";
 import Sidebar from "../components/sections/dashboard/Sidebar";
 import Build_Button from "../components/ui/Build_Button";
@@ -14,8 +15,8 @@ const NewProject = () => {
       </div>
 
       {createPortal(
-        <div className="fixed bottom-6 right-6 z-[1000] isolate">
-          <Build_Button name="Build" />
+        <div className="absolute top-20 right-6 z-[1000]">
+            <Chat_Box/>
         </div>,
         document.body,
       )}
