@@ -1,13 +1,18 @@
+import { useNavigate } from "react-router-dom";
+
 const DashboardSideBar = () => {
+  const navigate = useNavigate();
   const menuItems = [
     { icon: 'dataset', label: 'All Projects', active: true },
     { icon: 'share', label: 'Shared with Me', active: false },
     { icon: 'archive', label: 'Archived', active: false },
   ];
 
+  const to = "/playground";
+
   return (
     <aside className="w-50 border-r border-[#30363D] hidden md:flex flex-col py-6 pr-9">
-      <button className="w-full bg-[#00b4d8] text-[#00414f] rounded-lg py-2 px-4 font-semibold mb-8 flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(0,180,216,0.3)] transition-all duration-300">
+      <button className="w-full bg-[#00b4d8] text-[#00414f] rounded-lg py-2 px-4 font-semibold mb-8 flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(0,180,216,0.3)] transition-all duration-300" onClick={()=>{navigate(to)}}>
         <span className="material-symbols-outlined text-[18px]">add</span>
         New Project
       </button>
