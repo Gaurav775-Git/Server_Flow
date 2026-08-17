@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import { CustomNode } from "../../utils/reactFlowCustomNodes";
 import HttpForm from "./ConfigForms/HttpForm";
+import DatabaseForm from "./ConfigForms/DatabaseForm";
 import { useState } from "react";
 
 const initialNodes = [];
@@ -50,6 +51,9 @@ const FlowCanvas = () => {
     }
     if (selectedNode.data.category === "HTTP") {
       return <HttpForm node={selectedNode} onSave={handleConfigSave} />;
+    }
+    if (selectedNode.data.category === "DATABASE") {
+      return <DatabaseForm node={selectedNode} onSave={handleConfigSave} />;
     }
     return null;
   };
