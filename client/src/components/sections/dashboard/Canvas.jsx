@@ -9,7 +9,7 @@ import {
   addEdge,
   useReactFlow,
 } from "@xyflow/react";
-import { CustomNode } from "../../utils/reactFlowCustomNodes";
+import { CustomNode } from "../../utils/ReactFlowCustomNodes";
 import HttpForm from "./ConfigForms/HttpForm";
 import { useState } from "react";
 
