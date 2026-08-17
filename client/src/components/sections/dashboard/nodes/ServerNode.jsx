@@ -49,13 +49,13 @@ const ServerNodes = ({ data }) => {
             <span className="flex items-center gap-1">
               {isConfigured ? (
                 <>
-                  <Check className="h-4 w-4 text-emerald-500" />
-                  <span className="text-emerald-500">Configured</span>
+                  <Check className="h-5 w-5 text-emerald-500 ml-3" />
+                  
                 </>
               ) : (
                 <>
-                  <X className="h-4 w-4 text-red-500" />
-                  <span className="text-red-500">Configured</span>
+                  <X className="h-5 w-5 text-red-500 ml-3" />
+                  
                 </>
               )}
             </span>
