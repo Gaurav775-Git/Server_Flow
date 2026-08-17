@@ -7,6 +7,7 @@ const Chat_Box = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
   const [canBuild, setCanBuild] = useState(false)
+  const [masterJson, setMasterJson] = useState(null)
   const [reply, setReply] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const timeoutRef = useRef(null)
@@ -15,6 +16,7 @@ const Chat_Box = () => {
   useEffect(() => {
     const receiveMasterJson = (event) => {
       const { nodes = [], connections = [] } = event.detail || {}
+      setMasterJson(event.detail || null)
       setReply(`Build configuration generated with ${nodes.length} node${nodes.length === 1 ? '' : 's'} and ${connections.length} connection${connections.length === 1 ? '' : 's'}.`)
     }
 
@@ -59,6 +61,28 @@ const Chat_Box = () => {
     }
   }
 
+  const handleBuild = async () => {
+    if (!masterJson || isLoading) return
+
+    setIsLoading(true)
+    try {
+      const res = await fetch('http://127.0.0.1:8001/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: JSON.stringify(masterJson, null, 2) }),
+      })
+      if (!res.ok) throw new Error('Unable to reach the Build Assistant.')
+
+      const result = await res.json()
+      setReply(result.reply)
+      window.location.assign('http://127.0.0.1:8001/download')
+    } catch (error) {
+      setReply(error.message || 'Something went wrong. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (!isExpanded) {
     return (
       <div className="fixed top-5 right-4 z-[60]">
@@ -84,6 +108,17 @@ const Chat_Box = () => {
       <div className="flex-1 overflow-y-auto p-4 text-sm text-zinc-300">
         {reply || 'Start building by sending a message below.'}
       </div>
+
+      <button
+        type="button"
+        onClick={handleBuild}
+        disabled={!masterJson || isLoading}
+        className="mx-3 mt-1 flex items-center justify-center gap-2 rounded-md bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-black shadow-md shadow-emerald-500/20 transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isLoading ? 'Building…' : 'Click here to Build'}
+      </button>
+
+      <p className="my-2 text-center text-xs text-zinc-500">or add comments</p>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex gap-2 border-t border-zinc-800 p-3">
         <input
