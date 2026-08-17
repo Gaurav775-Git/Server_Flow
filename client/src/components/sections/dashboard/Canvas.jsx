@@ -12,7 +12,7 @@ import {
 import { CustomNode } from "../../utils/ReactFlowCustomNodes";
 import HttpForm from "./ConfigForms/HttpForm";
 import DatabaseForm from "./ConfigForms/DatabaseForm";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const initialNodes = [];
 
@@ -95,7 +95,7 @@ const FlowCanvas = () => {
     setShowConfig(true);
   };
 
-  const generateMasterJson = () => {
+  const generateMasterJson = useCallback(() => {
     const MasterJson = {
       project: {
         name: "Generated Server",
@@ -115,7 +115,18 @@ const FlowCanvas = () => {
       })),
     };
     console.log("masterjson :", JSON.stringify(MasterJson, null, 2));
-  };
+    return MasterJson;
+  }, [nodes, edges]);
+
+  useEffect(() => {
+    const handleGenerateMasterJson = () => {
+      const masterJson = generateMasterJson();
+      window.dispatchEvent(new CustomEvent("master-json-generated", { detail: masterJson }));
+    };
+
+    window.addEventListener("generate-master-json", handleGenerateMasterJson);
+    return () => window.removeEventListener("generate-master-json", handleGenerateMasterJson);
+  }, [generateMasterJson]);
 
   return (
     <div className=" relative w-full h-full">
@@ -139,12 +150,12 @@ const FlowCanvas = () => {
       </ReactFlow>
       {showConfig && <div className="absolute inset-0 z-40 bg-black/20" />}
       {showConfig && renderConfigForm()}
-      <button
+      {/* <button
         onClick={generateMasterJson}
         className="absolute bottom-5 right-5 z-30 rounded-lg bg-cyan-500 px-4 py-2 text-black"
       >
         generate code
-      </button>
+      </button> */}
     </div>
   );
 };
