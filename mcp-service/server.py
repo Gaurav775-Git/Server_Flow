@@ -1,4 +1,5 @@
 import os
+import json
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("Server_Flow")
@@ -13,6 +14,15 @@ def safe_path(relative_path: str) -> str:
     if not full_path.startswith(PROJECT_DIR):
         raise ValueError("Access outside the project directory is not permitted.")
     return full_path
+
+@mcp.tool()
+def jsonDataResolver(data: str) -> str:
+    """If the data is in JSON format, convert it into readable indented plain text. Returns the original text unchanged if it isn't valid JSON."""
+    try:
+        parsed = json.loads(data)
+        return json.dumps(parsed, indent=2)
+    except (json.JSONDecodeError, TypeError):
+        return data
 
 @mcp.tool()
 def hello(name: str) -> str:
