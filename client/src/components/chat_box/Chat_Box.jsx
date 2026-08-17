@@ -22,11 +22,9 @@ const Chat_Box = () => {
 
   if(!expand){
     return (
-      <button 
-      onClick={()=>{setexpand(true)}}
-      className="absolute bottom-5 right-4 rounded-lg  px-4 py-2 text-black shadow-lg">
-        <Build_Button name="Build"/>
-      </button>
+      <div className="absolute bottom-5 right-4">
+        <Build_Button name="Build" onClick={() => setexpand(true)} />
+      </div>
     )
   }
 
