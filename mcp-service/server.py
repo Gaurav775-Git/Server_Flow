@@ -11,6 +11,17 @@ def safe_path(relative_path: str) -> str:
         raise ValueError("Access outside the allowed directory is not permitted.")
     return full_path
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
+os.makedirs(PROJECT_DIR, exist_ok=True)
+
+def safe_path(relative_path: str) -> str:
+    """Resolve a path safely inside PROJECT_DIR, allowing subfolders but blocking traversal outside it."""
+    full_path = os.path.abspath(os.path.join(PROJECT_DIR, relative_path))
+    if not full_path.startswith(PROJECT_DIR):
+        raise ValueError("Access outside the project directory is not permitted.")
+    return full_path
+
 @mcp.tool()
 def hello(name: str) -> str:
     """Greet a person by name."""
