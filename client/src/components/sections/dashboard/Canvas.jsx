@@ -91,7 +91,27 @@ const FlowCanvas = () => {
     setShowConfig(true);
   };
 
-  
+  const generateMasterJson = () => {
+    const MasterJson = {
+      project: {
+        name: "Generated Server",
+        version: "1.0",
+      },
+
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        category: node.data.category,
+        type: node.data.type,
+        configuration: node.data.config,
+      })),
+
+      connections: edges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+      })),
+    };
+    console.log("masterjson :", JSON.stringify(MasterJson, null, 2));
+  };
 
   return (
     <div className=" relative w-full h-full">
@@ -115,7 +135,12 @@ const FlowCanvas = () => {
       </ReactFlow>
       {showConfig && <div className="absolute inset-0 z-40 bg-black/20" />}
       {showConfig && renderConfigForm()}
-     
+      <button
+        onClick={generateMasterJson}
+        className="absolute bottom-5 right-5 z-30 rounded-lg bg-cyan-500 px-4 py-2 text-black"
+      >
+        generate code
+      </button>
     </div>
   );
 };
