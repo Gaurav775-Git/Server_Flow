@@ -59,6 +59,9 @@ const FlowCanvas = () => {
     setEdges((edges) => addEdge(connection, edges));
   };
   const onDropEvent = (event) => {
+    if (showConfig) {
+      return;
+    }
     const data = event.dataTransfer.getData("application/reactflow");
 
     if (!data) {
@@ -88,6 +91,8 @@ const FlowCanvas = () => {
     setShowConfig(true);
   };
 
+  
+
   return (
     <div className=" relative w-full h-full">
       <ReactFlow
@@ -97,14 +102,20 @@ const FlowCanvas = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDragOver={(event) => event.preventDefault()}
+        onDragOver={(event) => {
+          if (!showConfig) {
+            event.preventDefault();
+          }
+        }}
         onDrop={onDropEvent}
       >
         <Background />
         <Controls />
         <MiniMap />
       </ReactFlow>
+      {showConfig && <div className="absolute inset-0 z-40 bg-black/20" />}
       {showConfig && renderConfigForm()}
+     
     </div>
   );
 };
