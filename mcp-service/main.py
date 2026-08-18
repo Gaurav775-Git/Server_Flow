@@ -2,12 +2,13 @@ import json
 import shutil
 import os
 from fastapi.responses import FileResponse
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from llm import ask_llm
+from server import build_server_from_flow
 
 app = FastAPI()
 
@@ -21,7 +22,8 @@ app.add_middleware(
 history = []
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = ""
+    master_json: dict | None = None
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
@@ -34,6 +36,12 @@ async def download_project():
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
+    if req.master_json is not None:
+        try:
+            return {"reply": build_server_from_flow(req.master_json)}
+        except (ValueError, json.JSONDecodeError) as exc:
+            raise HTTPException(status_code=422, detail=f"Build failed: {exc}") from exc
+
     server_params = StdioServerParameters(command="python", args=["server.py"])
 
     async with stdio_client(server_params) as (read, write):
@@ -45,6 +53,7 @@ async def chat(req: ChatRequest):
                         "name": t.name, "description": t.description, "parameters": t.inputSchema}}
                       for t in mcp_tools]
 
+            history.append({"role": "system", "content": "You are a Server Flow assistant. A React Flow graph uses HTTP nodes as API routes and DATABASE nodes as data-store notes. When a user provides a graph, call generate_server_from_flow; never guess missing endpoints. Keep replies short."})
             history.append({"role": "user", "content": req.message})
 
             while True:

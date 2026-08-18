@@ -13,6 +13,90 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
 os.makedirs(PROJECT_DIR, exist_ok=True)
 
+HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+
+def normalize_flow(flow) -> dict:
+    """Validate the small React Flow payload used by the builder."""
+    if isinstance(flow, str):
+        flow = json.loads(flow)
+    if not isinstance(flow, dict):
+        raise ValueError("Flow must be a JSON object.")
+
+    nodes = flow.get("nodes")
+    connections = flow.get("connections", [])
+    if not isinstance(nodes, list) or not isinstance(connections, list):
+        raise ValueError("Flow must contain nodes and connections arrays.")
+
+    normalized_nodes, ids = [], set()
+    for node in nodes:
+        if not isinstance(node, dict) or not isinstance(node.get("id"), str):
+            raise ValueError("Every node needs a string id.")
+        if node["id"] in ids:
+            raise ValueError(f"Duplicate node id: {node['id']}")
+        ids.add(node["id"])
+        category = str(node.get("category", "")).upper()
+        if category not in {"HTTP", "DATABASE", "AUTH"}:
+            raise ValueError(f"Unsupported node category: {category or 'missing'}")
+        config = node.get("configuration") or {}
+        if not isinstance(config, dict):
+            raise ValueError(f"Node {node['id']} configuration must be an object.")
+        normalized_nodes.append({"id": node["id"], "category": category,
+                                 "type": str(node.get("type", "")).upper(), "configuration": config})
+
+    for connection in connections:
+        if not isinstance(connection, dict) or connection.get("source") not in ids or connection.get("target") not in ids:
+            raise ValueError("Every connection must reference two existing node ids.")
+    return {"nodes": normalized_nodes, "connections": connections}
+
+def build_server_from_flow(flow) -> str:
+    """Create a minimal Express server directly from a validated React Flow graph."""
+    graph = normalize_flow(flow)
+    routes, databases, auth_nodes = [], [], []
+    for node in graph["nodes"]:
+        config = node["configuration"]
+        if node["category"] == "HTTP":
+            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
+            endpoint = config.get("endpoint")
+            if not isinstance(endpoint, str) or not endpoint.startswith("/"):
+                raise ValueError(f"HTTP node {node['id']} needs an endpoint beginning with '/'.")
+            routes.append((method.lower(), endpoint, str(config.get("description", ""))))
+        elif node["category"] == "DATABASE":
+            databases.append(str(config.get("description", "Database node")))
+        else:
+            auth_nodes.append(node["type"] or "Authentication")
+
+    app_lines = [
+        "const express = require('express');",
+        "const app = express();",
+        "app.use(express.json());",
+        "",
+    ]
+    for description in databases:
+        app_lines.append(f"// Database: {description.replace(chr(10), ' ')}")
+    for auth_type in auth_nodes:
+        app_lines.append(f"// Authentication node: {auth_type}")
+    if databases or auth_nodes:
+        app_lines.append("")
+    for method, endpoint, description in routes:
+        # json.dumps safely creates JavaScript string literals for user-provided text.
+        app_lines.extend([
+            f"app.{method}({json.dumps(endpoint)}, (req, res) => {{",
+            f"  res.json({{ message: {json.dumps(description or endpoint)} }});",
+            "});",
+            "",
+        ])
+    if not routes:
+        app_lines.extend(["app.get('/', (req, res) => res.json({ message: 'Server Flow is ready' }));", ""])
+    app_lines.extend(["const port = process.env.PORT || 3000;", "app.listen(port, () => console.log(`Server running on ${port}`));", ""])
+
+    os.makedirs(PROJECT_DIR, exist_ok=True)
+    with open(os.path.join(PROJECT_DIR, "app.js"), "w") as file:
+        file.write("\n".join(app_lines))
+    with open(os.path.join(PROJECT_DIR, "package.json"), "w") as file:
+        json.dump({"name": "server-flow-project", "version": "1.0.0", "private": True,
+                   "scripts": {"start": "node app.js"}, "dependencies": {"express": "^4.21.2"}}, file, indent=2)
+    return f"Generated user_project/app.js with {len(routes)} HTTP route(s), {len(databases)} database node(s), and {len(auth_nodes)} auth node(s)."
+
 def safe_path(relative_path: str) -> str:
     """Resolve a path safely inside PROJECT_DIR."""
     full_path = os.path.abspath(os.path.join(PROJECT_DIR, relative_path))
@@ -32,12 +116,19 @@ def format_size(size_bytes: int) -> str:
 
 @mcp.tool()
 def jsonDataResolver(data: str) -> str:
-    """If the data is in JSON format, convert it into readable indented plain text."""
+    """Validate a JSON React Flow graph and return a compact, readable graph summary."""
     try:
-        parsed = json.loads(data)
-        return json.dumps(parsed, indent=2)
-    except (json.JSONDecodeError, TypeError):
-        return data
+        graph = normalize_flow(data)
+        nodes = [f"{node['id']}: {node['category']} {node['type']} {node['configuration']}" for node in graph["nodes"]]
+        edges = [f"{edge['source']} -> {edge['target']}" for edge in graph["connections"]]
+        return "Nodes:\n" + "\n".join(nodes) + "\nConnections:\n" + "\n".join(edges)
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        return f"Invalid flow JSON: {exc}"
+
+@mcp.tool()
+def generate_server_from_flow(flow: dict) -> str:
+    """Generate user_project/app.js and package.json from the React Flow nodes and connections."""
+    return build_server_from_flow(flow)
 
 @mcp.tool()
 def hello(name: str) -> str:
@@ -78,8 +169,6 @@ def create_folder(foldername: str) -> str:
         return f"Folder {foldername} already exists."
     os.mkdir(path)
     return f"Folder {foldername} created successfully."
-
-# ======================== NEW TOOLS ========================
 
 @mcp.tool()
 def list_files(directory: str = "") -> str:

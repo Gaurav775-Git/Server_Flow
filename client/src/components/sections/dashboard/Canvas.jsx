@@ -89,10 +89,12 @@ const FlowCanvas = () => {
         config: {},
       },
     };
-    console.log(newNode);
+    const needsConfig = node.category === "HTTP" || node.category === "DATABASE";
     setNodes((nodes) => [...nodes, newNode]);
-    setSelectedNode(newNode);
-    setShowConfig(true);
+    if (needsConfig) {
+      setSelectedNode(newNode);
+      setShowConfig(true);
+    }
   };
 
   const generateMasterJson = useCallback(() => {
