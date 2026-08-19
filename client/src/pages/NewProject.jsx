@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 const NewProject = () => {
   return (
     <div className="relative h-screen">
-      <div className="grid grid-cols-[340px_1fr] grid-rows-[1fr] h-full">
+      <div className="grid grid-cols-[325px_1fr] grid-rows-[1fr] h-full">
         <Sidebar />
         <main className="min-w-0 h-full">
           <Canvas />
@@ -16,7 +16,7 @@ const NewProject = () => {
 
       {createPortal(
         <div className="absolute top-20 right-6 z-[1000]">
-            <Chat_Box/>
+          <Chat_Box />
         </div>,
         document.body,
       )}
