@@ -7,6 +7,14 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 import re
 
+# Try to import your LLM module
+try:
+    from llm import ask_llm
+    HAS_LLM = True
+except ImportError:
+    HAS_LLM = False
+    ask_llm = None
+
 mcp = FastMCP("Server_Flow")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -86,7 +94,67 @@ def normalize_flow(flow) -> dict:
 
     return {"nodes": normalized_nodes, "connections": connections}
 
-def generate_app_js(routes, middlewares, database_config, auth_config):
+# ====================== LLM CODE GENERATION ======================
+
+def generate_code_with_llm(nodes, connections):
+    if not HAS_LLM or ask_llm is None:
+        return None
+
+    node_desc = []
+    for node in nodes:
+        config = node["configuration"]
+        desc = f"id: {node['id']}, category: {node['category']}, type: {node['type']}"
+        if node["category"] == "HTTP":
+            endpoint = config.get("endpoint", "/")
+            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
+            desc += f", method: {method}, endpoint: {endpoint}"
+        if config.get("description"):
+            desc += f", description: {config['description']}"
+        for key in ["auth", "table", "status", "query", "message"]:
+            if key in config:
+                desc += f", {key}: {config[key]}"
+        node_desc.append(desc)
+    
+    conn_desc = [f"{conn['source']} -> {conn['target']}" for conn in connections]
+    
+    prompt = f"""You are an expert Node.js developer. Given the following backend workflow described by nodes and connections, generate a complete Express.js server with proper routes, middleware, database integration, and error handling.
+
+Nodes:
+{chr(10).join('- ' + d for d in node_desc)}
+
+Connections:
+{chr(10).join('- ' + d for d in conn_desc)}
+
+Requirements:
+- Use Express.js with CORS, Helmet, JSON parsing, and Morgan logging.
+- Use environment variables for configuration (dotenv).
+- Use async/await for all asynchronous operations.
+- Include proper error handling (try/catch with 500 errors).
+- For HTTP nodes, create appropriate route handlers.
+- For DATABASE nodes, include database connection and queries (use PostgreSQL, assume `pool` from `pg`).
+- For AUTH nodes, include authentication middleware (JWT).
+- For RESPONSE nodes, format appropriate JSON responses.
+- Include a health check endpoint `GET /health`.
+- Include a 404 handler and a global error handler.
+- The code should be production-ready and well-structured.
+
+Generate ONLY the JavaScript code for a complete `app.js` file (no extra text or explanation). It should require and use `dotenv`, `express`, etc. Do not include `server.listen` – just export the app as `module.exports = app;`.
+"""
+    try:
+        response = ask_llm([{"role": "user", "content": prompt}])
+        code = response.get("content", "")
+        # Remove markdown code fences if present
+        code = re.sub(r'^```javascript\s*', '', code, flags=re.MULTILINE)
+        code = re.sub(r'^```\s*', '', code, flags=re.MULTILINE)
+        code = re.sub(r'```$', '', code, flags=re.MULTILINE)
+        return code.strip()
+    except Exception as e:
+        print(f"LLM generation error: {e}")
+        return None
+
+# ====================== FALLBACK TEMPLATE GENERATOR ======================
+
+def generate_app_js_template(routes, middlewares, database_config, auth_config):
     lines = [
         "const express = require('express');",
         "const cors = require('cors');",
@@ -508,28 +576,31 @@ def generate_readme(project_name, routes):
     
     return "\n".join(lines)
 
+# ====================== MAIN PROJECT BUILDER ======================
+
 def build_complete_project(flow, project_name="server-flow-api"):
     try:
         graph = normalize_flow(flow)
     except ValueError as e:
         return f"Flow validation failed: {e}"
 
+    nodes = graph["nodes"]
+    connections = graph["connections"]
+
+    # Extract route info for potential template fallback
     routes = []
     middlewares = []
     database_config = None
     auth_config = None
-    endpoints = []
-    
-    for node in graph["nodes"]:
+
+    for node in nodes:
         config = node["configuration"]
         category = node["category"]
-        
         if category == "HTTP":
             method = node["type"] if node["type"] in HTTP_METHODS else "GET"
             endpoint = config.get("endpoint") or config.get("path") or config.get("route") or "/"
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint.lstrip("/")
-            
             routes.append({
                 "method": method,
                 "path": endpoint,
@@ -538,35 +609,16 @@ def build_complete_project(flow, project_name="server-flow-api"):
                 "name": config.get("name", "default"),
                 "handler": config.get("handler", "handler")
             })
-            endpoints.append({
-                "method": method,
-                "path": endpoint,
-                "description": config.get("description", ""),
-                "auth": config.get("auth", False),
-                "handler": config.get("handler", "handler")
-            })
-            
         elif category == "DATABASE":
-            database_config = {
-                "type": node["type"],
-                "description": config.get("description", "Database")
-            }
-            
+            database_config = {"type": node["type"], "description": config.get("description", "Database")}
         elif category == "AUTH":
-            auth_config = {
-                "type": node["type"],
-                "description": config.get("description", "Authentication")
-            }
-            
+            auth_config = {"type": node["type"], "description": config.get("description", "Authentication")}
         elif category == "MIDDLEWARE":
-            middlewares.append({
-                "description": config.get("description", "Middleware"),
-                "code": config.get("code", "() => {}")
-            })
-    
+            middlewares.append({"description": config.get("description", "Middleware"), "code": config.get("code", "() => {}")})
+
     project_path = os.path.join(PROJECT_DIR, project_name)
     os.makedirs(project_path, exist_ok=True)
-    
+
     folders = [
         "src/config",
         "src/controllers",
@@ -577,60 +629,73 @@ def build_complete_project(flow, project_name="server-flow-api"):
         "src/utils",
         "tests"
     ]
-    
     for folder in folders:
         os.makedirs(os.path.join(project_path, folder), exist_ok=True)
-    
+
+    # Attempt LLM generation for app.js
+    llm_code = generate_code_with_llm(nodes, connections) if HAS_LLM else None
+
+    if llm_code:
+        # Use LLM-generated code
+        with open(os.path.join(project_path, "src", "app.js"), "w") as f:
+            f.write(llm_code)
+    else:
+        # Fallback: use template generator
+        with open(os.path.join(project_path, "src", "app.js"), "w") as f:
+            f.write(generate_app_js_template(routes, middlewares, database_config, auth_config))
+
+    # Server.js (always generated from template)
+    with open(os.path.join(project_path, "src", "server.js"), "w") as f:
+        f.write(generate_server_js())
+
+    # package.json
     deps = {}
     if database_config:
         deps["pg"] = "^8.11.0"
     if auth_config:
         deps["jsonwebtoken"] = "^9.0.0"
         deps["bcryptjs"] = "^2.4.3"
-    
     with open(os.path.join(project_path, "package.json"), "w") as f:
         json.dump(generate_package_json(project_name, deps), f, indent=2)
-    
+
+    # .env.example
     with open(os.path.join(project_path, ".env.example"), "w") as f:
         f.write(generate_env_example())
-    
+
+    # README
     with open(os.path.join(project_path, "README.md"), "w") as f:
         f.write(generate_readme(project_name, routes))
-    
+
+    # Docker and docker-compose
     with open(os.path.join(project_path, "Dockerfile"), "w") as f:
         f.write(generate_dockerfile())
-    
     with open(os.path.join(project_path, "docker-compose.yml"), "w") as f:
         f.write(generate_docker_compose())
-    
-    gitignore_content = """node_modules/
+
+    # .gitignore
+    with open(os.path.join(project_path, ".gitignore"), "w") as f:
+        f.write("""node_modules/
 .env
 dist/
 coverage/
 *.log
 .DS_Store
 *.pid
-"""
-    with open(os.path.join(project_path, ".gitignore"), "w") as f:
-        f.write(gitignore_content)
-    
-    with open(os.path.join(project_path, "src", "app.js"), "w") as f:
-        f.write(generate_app_js(routes, middlewares, database_config, auth_config))
-    
-    with open(os.path.join(project_path, "src", "server.js"), "w") as f:
-        f.write(generate_server_js())
-    
+""")
+
+    # Database config if needed
     if database_config:
         with open(os.path.join(project_path, "src", "config", "database.js"), "w") as f:
             f.write(generate_database_config())
-    
+
+    # Middleware files
     with open(os.path.join(project_path, "src", "middleware", "validate.js"), "w") as f:
         f.write(generate_validation_middleware())
-    
     if auth_config:
         with open(os.path.join(project_path, "src", "middleware", "auth.js"), "w") as f:
             f.write(generate_auth_middleware())
-    
+
+    # Routes and controllers
     if routes:
         route_groups = {}
         for route in routes:
@@ -638,20 +703,21 @@ coverage/
             if name not in route_groups:
                 route_groups[name] = []
             route_groups[name].append(route)
-        
+
         for name, endpoints in route_groups.items():
             route_filename = name.lower().replace(' ', '_').replace('-', '_') + '.js'
             with open(os.path.join(project_path, "src", "routes", route_filename), "w") as f:
                 f.write(generate_route_file(name, endpoints))
-            
             controller_filename = name.lower().replace(' ', '_').replace('-', '_') + '.controller.js'
             with open(os.path.join(project_path, "src", "controllers", controller_filename), "w") as f:
                 f.write(generate_controller_file(name, endpoints))
-        
+
         with open(os.path.join(project_path, "src", "routes", "index.js"), "w") as f:
             f.write(generate_routes_index(routes))
-    
-    utils_content = """exports.asyncHandler = (fn) => (req, res, next) => {
+
+    # utils/helpers.js
+    with open(os.path.join(project_path, "src", "utils", "helpers.js"), "w") as f:
+        f.write("""exports.asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
@@ -667,11 +733,11 @@ exports.pick = (obj, keys) => {
     return result;
   }, {});
 };
-"""
-    with open(os.path.join(project_path, "src", "utils", "helpers.js"), "w") as f:
-        f.write(utils_content)
-    
-    model_content = """const { pool } = require('../config/database');
+""")
+
+    # models/base.model.js
+    with open(os.path.join(project_path, "src", "models", "base.model.js"), "w") as f:
+        f.write("""const { pool } = require('../config/database');
 
 class BaseModel {
   static async query(sql, params = []) {
@@ -686,11 +752,12 @@ class BaseModel {
 }
 
 module.exports = BaseModel;
-"""
-    with open(os.path.join(project_path, "src", "models", "base.model.js"), "w") as f:
-        f.write(model_content)
-    
-    return f"Complete project generated: {project_name}/ with {len(routes)} routes, database: {database_config['type'] if database_config else 'None'}, auth: {auth_config['type'] if auth_config else 'None'}"
+""")
+
+    status = "LLM" if llm_code else "Template"
+    return f"Complete project generated using {status}: {project_name}/ with {len(routes)} routes, database: {database_config['type'] if database_config else 'None'}, auth: {auth_config['type'] if auth_config else 'None'}"
+
+# ====================== MCP TOOLS ======================
 
 @mcp.tool()
 def validate_flow(flow: dict) -> str:
