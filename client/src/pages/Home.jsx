@@ -3,6 +3,8 @@ import NavBar from "../components/NavBar";
 import HeroSection from "../components/sections/home/HeroSection";
 import ProductsSection from "../components/sections/home/ProductsSection";
 import PlatformSection from "../components/sections/home/PlatformSection";
+import WhyServerFlow from "../components/Sections/home/WhyServerFlow";
+import TestimonialsSection from "../components/Sections/home/TestimonialsSection";
 
 const Home = () => {
   return (
@@ -15,6 +17,9 @@ const Home = () => {
 
       <PlatformSection />
 
+      <WhyServerFlow />
+
+      <TestimonialsSection />
       <Footer />
     </div>
   );
