@@ -13,19 +13,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
 os.makedirs(PROJECT_DIR, exist_ok=True)
 
-HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
-
-# ======================== HELPER FUNCTIONS ========================
+HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}
 
 def safe_path(relative_path: str) -> str:
-    """Resolve a path safely inside PROJECT_DIR."""
     full_path = os.path.abspath(os.path.join(PROJECT_DIR, relative_path))
     if not full_path.startswith(PROJECT_DIR):
         raise ValueError("Access outside the project directory is not permitted.")
     return full_path
 
 def format_size(size_bytes: int) -> str:
-    """Convert bytes to human-readable format."""
     for unit in ['B', 'KB', 'MB', 'GB']:
         if size_bytes < 1024.0:
             return f"{size_bytes:.2f} {unit}"
@@ -33,7 +29,6 @@ def format_size(size_bytes: int) -> str:
     return f"{size_bytes:.2f} TB"
 
 def normalize_flow(flow) -> dict:
-    """Validate and normalize the React Flow payload."""
     if isinstance(flow, str):
         flow = json.loads(flow)
     if not isinstance(flow, dict):
@@ -60,14 +55,13 @@ def normalize_flow(flow) -> dict:
         ids.add(node["id"])
         
         category = str(node.get("category", "")).upper()
-        if category not in {"HTTP", "DATABASE", "AUTH"}:
+        if category not in {"HTTP", "DATABASE", "AUTH", "LOGIC", "TRANSFORM", "RESPONSE"}:
             raise ValueError(f"Unsupported node category: {category or 'missing'}")
         
         config = node.get("configuration") or {}
         if not isinstance(config, dict):
             raise ValueError(f"Node {node['id']} configuration must be an object.")
         
-        # ✅ FIX: Ensure HTTP nodes have an endpoint
         if category == "HTTP":
             endpoint = config.get("endpoint") or config.get("path") or config.get("route")
             if not endpoint:
@@ -92,125 +86,626 @@ def normalize_flow(flow) -> dict:
 
     return {"nodes": normalized_nodes, "connections": connections}
 
-def build_server_from_flow(flow) -> str:
-    """Create a complete Express server from a validated React Flow graph."""
-    try:
-        graph = normalize_flow(flow)
-    except ValueError as e:
-        return f"❌ Flow validation failed: {e}"
-
-    routes = []
-    databases = []
-    auth_nodes = []
-    
-    for node in graph["nodes"]:
-        config = node["configuration"]
-        if node["category"] == "HTTP":
-            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
-            endpoint = config.get("endpoint") or config.get("path") or config.get("route") or "/"
-            
-            # Ensure endpoint starts with '/'
-            if not endpoint.startswith("/"):
-                endpoint = "/" + endpoint.lstrip("/")
-            
-            description = str(config.get("description", ""))
-            routes.append((method.lower(), endpoint, description))
-            
-        elif node["category"] == "DATABASE":
-            databases.append(str(config.get("description", "Database node")))
-        else:
-            auth_nodes.append(node["type"] or "Authentication")
-
-    # Build the Express server code
-    app_lines = [
+def generate_app_js(routes, middlewares, database_config, auth_config):
+    lines = [
         "const express = require('express');",
+        "const cors = require('cors');",
+        "const helmet = require('helmet');",
+        "const morgan = require('morgan');",
+        "require('dotenv').config();",
+        "",
         "const app = express();",
+        "",
+        "app.use(helmet());",
+        "app.use(cors());",
         "app.use(express.json());",
+        "app.use(express.urlencoded({ extended: true }));",
+        "app.use(morgan('dev'));",
         "",
     ]
     
-    # Add database comments
-    for description in databases:
-        app_lines.append(f"// Database: {description.replace(chr(10), ' ')}")
+    for middleware in middlewares:
+        lines.append(f"app.use({middleware['code']});")
+        lines.append("")
     
-    # Add auth comments
-    for auth_type in auth_nodes:
-        app_lines.append(f"// Authentication node: {auth_type}")
-    
-    if databases or auth_nodes:
-        app_lines.append("")
-    
-    # Add routes
-    if routes:
-        for method, endpoint, description in routes:
-            app_lines.extend([
-                f"app.{method}({json.dumps(endpoint)}, (req, res) => {{",
-                f"  res.json({{ message: {json.dumps(description or endpoint)} }});",
-                "});",
-                "",
-            ])
-    else:
-        app_lines.extend([
-            "app.get('/', (req, res) => res.json({ message: 'Server Flow is ready' }));",
+    if database_config:
+        lines.extend([
+            "const db = require('./config/database');",
+            "db.connect();",
             "",
         ])
     
-    # Start server
-    app_lines.extend([
-        "const port = process.env.PORT || 3000;",
-        "app.listen(port, () => console.log(`Server running on ${port}`));",
-        ""
+    if auth_config:
+        lines.extend([
+            "const auth = require('./middleware/auth');",
+            "app.use(auth.initialize());",
+            "",
+        ])
+    
+    lines.append("const apiRoutes = require('./routes');")
+    lines.append("app.use('/api', apiRoutes);")
+    lines.append("")
+    
+    lines.extend([
+        "app.get('/health', (req, res) => {",
+        "  res.json({",
+        "    status: 'OK',",
+        "    timestamp: new Date().toISOString(),",
+        "    uptime: process.uptime()",
+        "  });",
+        "});",
+        "",
     ])
+    
+    lines.extend([
+        "app.use((req, res) => {",
+        "  res.status(404).json({ error: 'Route not found' });",
+        "});",
+        "",
+    ])
+    
+    lines.extend([
+        "app.use((err, req, res, next) => {",
+        "  console.error('Error:', err.stack);",
+        "  res.status(err.status || 500).json({",
+        "    error: err.message || 'Internal Server Error',",
+        "    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })",
+        "  });",
+        "});",
+        "",
+        "module.exports = app;",
+    ])
+    
+    return "\n".join(lines)
 
-    # Write files
-    os.makedirs(PROJECT_DIR, exist_ok=True)
-    
-    app_js_path = os.path.join(PROJECT_DIR, "app.js")
-    with open(app_js_path, "w") as file:
-        file.write("\n".join(app_lines))
-    
-    package_json_path = os.path.join(PROJECT_DIR, "package.json")
-    if not os.path.exists(package_json_path):
-        with open(package_json_path, "w") as file:
-            json.dump({
-                "name": "server-flow-project",
-                "version": "1.0.0",
-                "private": True,
-                "scripts": {
-                    "start": "node app.js",
-                    "dev": "nodemon app.js"
-                },
-                "dependencies": {
-                    "express": "^4.21.2",
-                    "cors": "^2.8.5",
-                    "dotenv": "^16.4.5"
-                },
-                "devDependencies": {
-                    "nodemon": "^3.0.0"
-                }
-            }, file, indent=2)
-    
-    return f"✅ Generated user_project/app.js with {len(routes)} HTTP route(s), {len(databases)} database node(s), and {len(auth_nodes)} auth node(s)."
+def generate_server_js():
+    return """const app = require('./app');
+const dotenv = require('dotenv');
 
-# ======================== MCP TOOLS ========================
+dotenv.config();
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Health: http://localhost:${PORT}/health`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+"""
+
+def generate_routes_index(routes):
+    lines = [
+        "const express = require('express');",
+        "const router = express.Router();",
+        "",
+    ]
+    
+    route_names = set()
+    for route in routes:
+        name = route.get('name', 'default')
+        import_name = name.lower().replace(' ', '_').replace('-', '_')
+        if import_name not in route_names:
+            route_names.add(import_name)
+            lines.append(f"const {import_name}Routes = require('./{import_name}');")
+            lines.append(f"router.use('/{import_name}', {import_name}Routes);")
+    
+    lines.append("")
+    lines.append("module.exports = router;")
+    return "\n".join(lines)
+
+def generate_route_file(route_name, endpoints):
+    name = route_name.lower().replace(' ', '_').replace('-', '_')
+    controller_name = name + '_controller'
+    
+    lines = [
+        "const express = require('express');",
+        f"const router = express.Router();",
+        f"const {controller_name} = require('../controllers/{name}.controller');",
+        "const { validate } = require('../middleware/validate');",
+        "",
+    ]
+    
+    for endpoint in endpoints:
+        method = endpoint.get('method', 'GET').lower()
+        path = endpoint.get('path', '/')
+        needs_auth = endpoint.get('auth', False)
+        
+        if needs_auth:
+            lines.append(f"router.{method}('{path}', auth, {controller_name}.{endpoint.get('handler', 'handler')});")
+        else:
+            lines.append(f"router.{method}('{path}', {controller_name}.{endpoint.get('handler', 'handler')});")
+        lines.append("")
+    
+    lines.append("module.exports = router;")
+    return "\n".join(lines)
+
+def generate_controller_file(controller_name, endpoints):
+    name = controller_name.lower().replace(' ', '_').replace('-', '_')
+    
+    lines = []
+    
+    for endpoint in endpoints:
+        handler = endpoint.get('handler', 'handler')
+        
+        lines.extend([
+            f"exports.{handler} = async (req, res, next) => {{",
+            "  try {",
+            "    res.json({",
+            "      message: 'Success',",
+            "      data: req.body",
+            "    });",
+            "  } catch (error) {",
+            "    next(error);",
+            "  }",
+            "};",
+            "",
+        ])
+    
+    return "\n".join(lines)
+
+def generate_validation_middleware():
+    return """const Joi = require('joi');
+
+const validate = (schema) => {
+  return (req, res, next) => {
+    const { error } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.details.map(d => d.message)
+      });
+    }
+    next();
+  };
+};
+
+module.exports = { validate };
+"""
+
+def generate_auth_middleware():
+    return """const jwt = require('jsonwebtoken');
+
+const auth = {
+  initialize: () => {
+    return (req, res, next) => {
+      next();
+    };
+  },
+  
+  authenticate: (req, res, next) => {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+    
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+      req.user = decoded;
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  },
+  
+  authorize: (...roles) => {
+    return (req, res, next) => {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      if (!roles.includes(req.user.role)) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+      next();
+    };
+  }
+};
+
+module.exports = auth;
+"""
+
+def generate_database_config():
+    return """const { Pool } = require('pg');
+
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 5432,
+  database: process.env.DB_NAME || 'serverflow',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'password',
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+const connect = async () => {
+  try {
+    await pool.connect();
+    console.log('Database connected');
+  } catch (error) {
+    console.error('Database connection error:', error);
+    process.exit(1);
+  }
+};
+
+module.exports = { pool, connect };
+"""
+
+def generate_package_json(project_name, dependencies):
+    default_deps = {
+        "express": "^4.21.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "helmet": "^7.0.0",
+        "morgan": "^1.10.0",
+        "joi": "^17.12.0",
+        "jsonwebtoken": "^9.0.0",
+        "bcryptjs": "^2.4.3",
+        "pg": "^8.11.0"
+    }
+    
+    all_deps = {**default_deps, **dependencies}
+    
+    return {
+        "name": project_name.lower().replace(' ', '-'),
+        "version": "1.0.0",
+        "description": "Generated by Server Flow - Complete Backend API",
+        "main": "server.js",
+        "scripts": {
+            "start": "node server.js",
+            "dev": "nodemon server.js",
+            "test": "jest",
+            "lint": "eslint .",
+            "format": "prettier --write ."
+        },
+        "dependencies": all_deps,
+        "devDependencies": {
+            "nodemon": "^3.1.0",
+            "jest": "^29.7.0",
+            "eslint": "^8.57.0",
+            "prettier": "^3.2.0"
+        },
+        "engines": {
+            "node": ">=18.0.0"
+        }
+    }
+
+def generate_dockerfile():
+    return """FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
+"""
+
+def generate_docker_compose():
+    return """version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=serverflow
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+    depends_on:
+      - postgres
+    volumes:
+      - ./logs:/app/logs
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=serverflow
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+"""
+
+def generate_env_example():
+    return """PORT=3000
+NODE_ENV=development
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=serverflow
+DB_USER=postgres
+DB_PASSWORD=password
+JWT_SECRET=your_super_secret_jwt_key_here
+JWT_EXPIRE=7d
+CORS_ORIGIN=http://localhost:3000
+RATE_LIMIT_WINDOW=15
+RATE_LIMIT_MAX=100
+LOG_LEVEL=info
+"""
+
+def generate_readme(project_name, routes):
+    lines = [
+        f"# {project_name}",
+        "",
+        "Generated by Server Flow - Complete Backend API",
+        "",
+        "## Quick Start",
+        "",
+        "```bash",
+        "npm install",
+        "cp .env.example .env",
+        "npm run dev",
+        "```",
+        "",
+        "## API Endpoints",
+        "",
+        "| Method | Endpoint | Description | Auth |",
+        "|--------|----------|-------------|------|",
+    ]
+    
+    for route in routes:
+        method = route.get('method', 'GET')
+        path = route.get('path', '/')
+        description = route.get('description', '')
+        auth = 'Yes' if route.get('auth', False) else 'No'
+        lines.append(f"| {method} | `/api{path}` | {description} | {auth} |")
+    
+    lines.extend([
+        "",
+        "## Project Structure",
+        "",
+        "```",
+        f"{project_name}/",
+        "├── src/",
+        "│   ├── config/",
+        "│   │   └── database.js",
+        "│   ├── controllers/",
+        "│   │   └── *.controller.js",
+        "│   ├── middleware/",
+        "│   │   ├── auth.js",
+        "│   │   └── validate.js",
+        "│   ├── models/",
+        "│   │   └── *.model.js",
+        "│   ├── routes/",
+        "│   │   ├── index.js",
+        "│   │   └── *.js",
+        "│   ├── services/",
+        "│   │   └── *.service.js",
+        "│   ├── utils/",
+        "│   │   └── helpers.js",
+        "│   ├── app.js",
+        "│   └── server.js",
+        "├── tests/",
+        "│   └── *.test.js",
+        "├── .env.example",
+        "├── .gitignore",
+        "├── Dockerfile",
+        "├── docker-compose.yml",
+        "├── package.json",
+        "└── README.md",
+        "```",
+        "",
+        "## Docker Deployment",
+        "",
+        "```bash",
+        "docker-compose up --build",
+        "```",
+    ])
+    
+    return "\n".join(lines)
+
+def build_complete_project(flow, project_name="server-flow-api"):
+    try:
+        graph = normalize_flow(flow)
+    except ValueError as e:
+        return f"Flow validation failed: {e}"
+
+    routes = []
+    middlewares = []
+    database_config = None
+    auth_config = None
+    endpoints = []
+    
+    for node in graph["nodes"]:
+        config = node["configuration"]
+        category = node["category"]
+        
+        if category == "HTTP":
+            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
+            endpoint = config.get("endpoint") or config.get("path") or config.get("route") or "/"
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint.lstrip("/")
+            
+            routes.append({
+                "method": method,
+                "path": endpoint,
+                "description": config.get("description", ""),
+                "auth": config.get("auth", False),
+                "name": config.get("name", "default"),
+                "handler": config.get("handler", "handler")
+            })
+            endpoints.append({
+                "method": method,
+                "path": endpoint,
+                "description": config.get("description", ""),
+                "auth": config.get("auth", False),
+                "handler": config.get("handler", "handler")
+            })
+            
+        elif category == "DATABASE":
+            database_config = {
+                "type": node["type"],
+                "description": config.get("description", "Database")
+            }
+            
+        elif category == "AUTH":
+            auth_config = {
+                "type": node["type"],
+                "description": config.get("description", "Authentication")
+            }
+            
+        elif category == "MIDDLEWARE":
+            middlewares.append({
+                "description": config.get("description", "Middleware"),
+                "code": config.get("code", "() => {}")
+            })
+    
+    project_path = os.path.join(PROJECT_DIR, project_name)
+    os.makedirs(project_path, exist_ok=True)
+    
+    folders = [
+        "src/config",
+        "src/controllers",
+        "src/middleware",
+        "src/models",
+        "src/routes",
+        "src/services",
+        "src/utils",
+        "tests"
+    ]
+    
+    for folder in folders:
+        os.makedirs(os.path.join(project_path, folder), exist_ok=True)
+    
+    deps = {}
+    if database_config:
+        deps["pg"] = "^8.11.0"
+    if auth_config:
+        deps["jsonwebtoken"] = "^9.0.0"
+        deps["bcryptjs"] = "^2.4.3"
+    
+    with open(os.path.join(project_path, "package.json"), "w") as f:
+        json.dump(generate_package_json(project_name, deps), f, indent=2)
+    
+    with open(os.path.join(project_path, ".env.example"), "w") as f:
+        f.write(generate_env_example())
+    
+    with open(os.path.join(project_path, "README.md"), "w") as f:
+        f.write(generate_readme(project_name, routes))
+    
+    with open(os.path.join(project_path, "Dockerfile"), "w") as f:
+        f.write(generate_dockerfile())
+    
+    with open(os.path.join(project_path, "docker-compose.yml"), "w") as f:
+        f.write(generate_docker_compose())
+    
+    gitignore_content = """node_modules/
+.env
+dist/
+coverage/
+*.log
+.DS_Store
+*.pid
+"""
+    with open(os.path.join(project_path, ".gitignore"), "w") as f:
+        f.write(gitignore_content)
+    
+    with open(os.path.join(project_path, "src", "app.js"), "w") as f:
+        f.write(generate_app_js(routes, middlewares, database_config, auth_config))
+    
+    with open(os.path.join(project_path, "src", "server.js"), "w") as f:
+        f.write(generate_server_js())
+    
+    if database_config:
+        with open(os.path.join(project_path, "src", "config", "database.js"), "w") as f:
+            f.write(generate_database_config())
+    
+    with open(os.path.join(project_path, "src", "middleware", "validate.js"), "w") as f:
+        f.write(generate_validation_middleware())
+    
+    if auth_config:
+        with open(os.path.join(project_path, "src", "middleware", "auth.js"), "w") as f:
+            f.write(generate_auth_middleware())
+    
+    if routes:
+        route_groups = {}
+        for route in routes:
+            name = route.get('name', 'default')
+            if name not in route_groups:
+                route_groups[name] = []
+            route_groups[name].append(route)
+        
+        for name, endpoints in route_groups.items():
+            route_filename = name.lower().replace(' ', '_').replace('-', '_') + '.js'
+            with open(os.path.join(project_path, "src", "routes", route_filename), "w") as f:
+                f.write(generate_route_file(name, endpoints))
+            
+            controller_filename = name.lower().replace(' ', '_').replace('-', '_') + '.controller.js'
+            with open(os.path.join(project_path, "src", "controllers", controller_filename), "w") as f:
+                f.write(generate_controller_file(name, endpoints))
+        
+        with open(os.path.join(project_path, "src", "routes", "index.js"), "w") as f:
+            f.write(generate_routes_index(routes))
+    
+    utils_content = """exports.asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+exports.omit = (obj, keys) => {
+  const result = { ...obj };
+  keys.forEach(key => delete result[key]);
+  return result;
+};
+
+exports.pick = (obj, keys) => {
+  return keys.reduce((result, key) => {
+    if (key in obj) result[key] = obj[key];
+    return result;
+  }, {});
+};
+"""
+    with open(os.path.join(project_path, "src", "utils", "helpers.js"), "w") as f:
+        f.write(utils_content)
+    
+    model_content = """const { pool } = require('../config/database');
+
+class BaseModel {
+  static async query(sql, params = []) {
+    const client = await pool.connect();
+    try {
+      const result = await client.query(sql, params);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+}
+
+module.exports = BaseModel;
+"""
+    with open(os.path.join(project_path, "src", "models", "base.model.js"), "w") as f:
+        f.write(model_content)
+    
+    return f"Complete project generated: {project_name}/ with {len(routes)} routes, database: {database_config['type'] if database_config else 'None'}, auth: {auth_config['type'] if auth_config else 'None'}"
 
 @mcp.tool()
 def validate_flow(flow: dict) -> str:
-    """Validate the React Flow graph before generation."""
     try:
         normalized = normalize_flow(flow)
-        return f"✅ Flow is valid. Found {len(normalized['nodes'])} nodes and {len(normalized['connections'])} connections."
+        return f"Flow is valid. Found {len(normalized['nodes'])} nodes and {len(normalized['connections'])} connections."
     except ValueError as e:
-        return f"❌ Invalid flow: {e}"
+        return f"Invalid flow: {e}"
 
 @mcp.tool()
-def generate_server_from_flow(flow: dict) -> str:
-    """Generate user_project/app.js and package.json from the React Flow nodes and connections."""
-    return build_server_from_flow(flow)
+def generate_server_from_flow(flow: dict, project_name: str = "server-flow-api") -> str:
+    return build_complete_project(flow, project_name)
 
 @mcp.tool()
 def project_files(action: str, path: str = "", content: str = "") -> str:
-    """Master project-file tool. Use action=list, read, write, delete."""
     try:
         if action == "list":
             file_path = safe_path(path) if path else PROJECT_DIR
@@ -223,10 +718,10 @@ def project_files(action: str, path: str = "", content: str = "") -> str:
             for item in sorted(items):
                 item_path = os.path.join(file_path, item)
                 if os.path.isdir(item_path):
-                    result.append(f"📁 {item}/")
+                    result.append(f"Folder: {item}/")
                 else:
                     size = os.path.getsize(item_path)
-                    result.append(f"📄 {item} ({format_size(size)})")
+                    result.append(f"File: {item} ({format_size(size)})")
             return "\n".join(result)
             
         elif action == "read":
@@ -245,7 +740,7 @@ def project_files(action: str, path: str = "", content: str = "") -> str:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "w") as file:
                 file.write(content)
-            return f"✅ Wrote {path}"
+            return f"Wrote {path}"
             
         elif action == "delete":
             if not path:
@@ -255,19 +750,18 @@ def project_files(action: str, path: str = "", content: str = "") -> str:
                 return f"File not found: {path}"
             if os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-                return f"✅ Deleted folder: {path}"
+                return f"Deleted folder: {path}"
             else:
                 os.remove(file_path)
-                return f"✅ Deleted file: {path}"
+                return f"Deleted file: {path}"
         else:
             return "Unsupported action. Use list, read, write, or delete."
             
     except (OSError, ValueError) as exc:
-        return f"❌ File operation failed: {exc}"
+        return f"File operation failed: {exc}"
 
 @mcp.tool()
 def jsonDataResolver(data: str) -> str:
-    """Validate a JSON React Flow graph and return a compact, readable graph summary."""
     try:
         graph = normalize_flow(data)
         nodes = [f"{node['id']}: {node['category']} {node['type']} {node['configuration']}" for node in graph["nodes"]]
@@ -278,12 +772,10 @@ def jsonDataResolver(data: str) -> str:
 
 @mcp.tool()
 def hello(name: str) -> str:
-    """Greet a person by name."""
     return f"Hello, {name}!"
 
 @mcp.tool()
 def read_file(filename: str) -> str:
-    """Read and return the contents of a text file."""
     try:
         path = safe_path(filename)
         with open(path, "r") as f:
@@ -293,19 +785,17 @@ def read_file(filename: str) -> str:
 
 @mcp.tool()
 def write_file(filename: str, content: str) -> str:
-    """Write text content to a file. Overwrites if it already exists."""
     try:
         path = safe_path(filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write(content)
-        return f"✅ Data written to {filename}"
+        return f"Data written to {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def create_file(filename: str, content: str) -> str:
-    """Create a file if it doesn't exist, and write content into it."""
     try:
         path = safe_path(filename)
         if os.path.exists(path):
@@ -313,25 +803,23 @@ def create_file(filename: str, content: str) -> str:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write(content)
-        return f"✅ File created: {filename}"
+        return f"File created: {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def create_folder(foldername: str) -> str:
-    """Create a new folder. Fails if it already exists."""
     try:
         path = safe_path(foldername)
         if os.path.exists(path):
             return f"Folder {foldername} already exists."
         os.mkdir(path)
-        return f"✅ Folder {foldername} created."
+        return f"Folder {foldername} created."
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def list_files(directory: str = "") -> str:
-    """List all files and folders inside a directory."""
     try:
         path = safe_path(directory)
         items = os.listdir(path)
@@ -341,17 +829,16 @@ def list_files(directory: str = "") -> str:
         for item in sorted(items):
             item_path = os.path.join(path, item)
             if os.path.isdir(item_path):
-                result.append(f"📁 {item}/")
+                result.append(f"Folder: {item}/")
             else:
                 size = os.path.getsize(item_path)
-                result.append(f"📄 {item} ({format_size(size)})")
+                result.append(f"File: {item} ({format_size(size)})")
         return "\n".join(result)
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def delete_file(filename: str) -> str:
-    """Delete a file from the project directory."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -359,13 +846,12 @@ def delete_file(filename: str) -> str:
         if os.path.isdir(path):
             return f"{filename} is a folder. Use delete_folder instead."
         os.remove(path)
-        return f"✅ File {filename} deleted."
+        return f"File {filename} deleted."
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def delete_folder(foldername: str, recursive: bool = False) -> str:
-    """Delete a folder (only if empty, unless recursive=True)."""
     try:
         path = safe_path(foldername)
         if not os.path.exists(path):
@@ -374,16 +860,15 @@ def delete_folder(foldername: str, recursive: bool = False) -> str:
             return f"{foldername} is a file. Use delete_file instead."
         if recursive:
             shutil.rmtree(path)
-            return f"✅ Folder {foldername} deleted recursively."
+            return f"Folder {foldername} deleted recursively."
         else:
             os.rmdir(path)
-            return f"✅ Folder {foldername} deleted."
+            return f"Folder {foldername} deleted."
     except OSError as e:
         return f"Error: {e}. Folder may not be empty. Use recursive=True."
 
 @mcp.tool()
 def move_file(source: str, destination: str) -> str:
-    """Move or rename a file or folder from source to destination."""
     try:
         src_path = safe_path(source)
         dst_path = safe_path(destination)
@@ -391,13 +876,12 @@ def move_file(source: str, destination: str) -> str:
             return f"Source {source} does not exist."
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.move(src_path, dst_path)
-        return f"✅ Moved/renamed {source} → {destination}"
+        return f"Moved/renamed {source} -> {destination}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def copy_file(source: str, destination: str) -> str:
-    """Copy a file from source to destination."""
     try:
         src_path = safe_path(source)
         dst_path = safe_path(destination)
@@ -405,13 +889,12 @@ def copy_file(source: str, destination: str) -> str:
             return f"Source {source} does not exist."
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.copy2(src_path, dst_path)
-        return f"✅ Copied {source} → {destination}"
+        return f"Copied {source} -> {destination}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def file_info(path: str) -> str:
-    """Get detailed information about a file or folder."""
     try:
         full_path = safe_path(path)
         if not os.path.exists(full_path):
@@ -439,7 +922,6 @@ def file_info(path: str) -> str:
 
 @mcp.tool()
 def read_json(filename: str) -> str:
-    """Read a JSON file and return its content pretty formatted."""
     try:
         path = safe_path(filename)
         with open(path, "r") as f:
@@ -454,19 +936,17 @@ def read_json(filename: str) -> str:
 
 @mcp.tool()
 def write_json(filename: str, data: dict) -> str:
-    """Write a dictionary to a JSON file (pretty formatted)."""
     try:
         path = safe_path(filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        return f"✅ JSON written to {filename}"
+        return f"JSON written to {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def update_json(filename: str, updates: dict) -> str:
-    """Update specific fields in a JSON file (merge with existing data)."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -475,7 +955,6 @@ def update_json(filename: str, updates: dict) -> str:
         with open(path, "r") as f:
             data = json.load(f)
         
-        # Deep merge
         def deep_merge(base, updates):
             for key, value in updates.items():
                 if isinstance(value, dict) and key in base and isinstance(base[key], dict):
@@ -488,13 +967,12 @@ def update_json(filename: str, updates: dict) -> str:
         
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        return f"✅ JSON updated in {filename}"
+        return f"JSON updated in {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def search_in_file(filename: str, pattern: str, case_sensitive: bool = False) -> str:
-    """Search for a pattern (regex) in a file and return matching lines with line numbers."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -517,7 +995,6 @@ def search_in_file(filename: str, pattern: str, case_sensitive: bool = False) ->
 
 @mcp.tool()
 def find_in_files(directory: str, pattern: str, file_pattern: str = "*") -> str:
-    """Search for a pattern in all files matching a pattern inside a directory."""
     try:
         path = safe_path(directory)
         if not os.path.exists(path):
@@ -544,7 +1021,6 @@ def find_in_files(directory: str, pattern: str, file_pattern: str = "*") -> str:
 
 @mcp.tool()
 def get_file_hash(filename: str, algorithm: str = "sha256") -> str:
-    """Get the hash of a file to verify its integrity."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -571,7 +1047,6 @@ def get_file_hash(filename: str, algorithm: str = "sha256") -> str:
 
 @mcp.tool()
 def count_files(directory: str, recursive: bool = False) -> str:
-    """Count files and folders in a directory (optionally recursive)."""
     try:
         path = safe_path(directory)
         if not os.path.exists(path):
@@ -592,13 +1067,12 @@ def count_files(directory: str, recursive: bool = False) -> str:
                 else:
                     total_files += 1
         
-        return f"📊 {directory}:\n📁 Folders: {total_folders}\n📄 Files: {total_files}\n📦 Total items: {total_files + total_folders}"
+        return f"{directory}: Folders: {total_folders}, Files: {total_files}, Total: {total_files + total_folders}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def get_folder_size(directory: str) -> str:
-    """Calculate the total size of a folder (human-readable format)."""
     try:
         path = safe_path(directory)
         if not os.path.exists(path):
@@ -616,7 +1090,6 @@ def get_folder_size(directory: str) -> str:
 
 @mcp.tool()
 def read_file_range(filename: str, start_line: int, end_line: int) -> str:
-    """Read a specific range of lines from a file (1-indexed)."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -642,7 +1115,6 @@ def read_file_range(filename: str, start_line: int, end_line: int) -> str:
 
 @mcp.tool()
 def append_to_file(filename: str, content: str) -> str:
-    """Append content to the end of a file (creates file if it doesn't exist)."""
     try:
         path = safe_path(filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -650,13 +1122,12 @@ def append_to_file(filename: str, content: str) -> str:
             f.write(content)
             if not content.endswith("\n"):
                 f.write("\n")
-        return f"✅ Appended to {filename}"
+        return f"Appended to {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def prepend_to_file(filename: str, content: str) -> str:
-    """Prepend content to the beginning of a file."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -671,19 +1142,17 @@ def prepend_to_file(filename: str, content: str) -> str:
                 f.write("\n")
             f.write(existing)
         
-        return f"✅ Prepended to {filename}"
+        return f"Prepended to {filename}"
     except Exception as e:
         return f"Error: {e}"
 
 @mcp.tool()
 def get_file_extension(filename: str) -> str:
-    """Get the file extension from a filename."""
     _, ext = os.path.splitext(filename)
     return ext if ext else "No extension"
 
 @mcp.tool()
 def change_file_extension(filename: str, new_extension: str) -> str:
-    """Change the extension of a file."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -697,7 +1166,7 @@ def change_file_extension(filename: str, new_extension: str) -> str:
         
         os.rename(path, new_path)
         relative_new = os.path.relpath(new_path, PROJECT_DIR)
-        return f"✅ Extension changed: {filename} → {relative_new}"
+        return f"Extension changed: {filename} -> {relative_new}"
     except Exception as e:
         return f"Error: {e}"
 

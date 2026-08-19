@@ -6,7 +6,7 @@ import json
 load_dotenv()
 
 API_KEY = os.getenv("LLM_API_KEY")
-MODEL = "poolside/laguna-s-2.1:free"
+MODEL = "cohere/north-mini-code:free"
 
 def ask_llm(messages, tools=None):
     payload = {"model": MODEL, "messages": messages}
