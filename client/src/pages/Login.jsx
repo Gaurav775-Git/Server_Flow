@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 const Login = () => {
   return (
     <div className="min-h-screen bg-[#0b0e14] text-[#e1e2eb]">
-      <NavBar />
+      <NavBar ctaButton={{ label: 'Sign up', href: '/signup' }} />
       <div className="min-h-screen relative flex justify-center items-center bg-[#10131A]">
         <LoginLeftIcon />
         <LoginCard />
