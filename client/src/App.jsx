@@ -8,6 +8,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Playground_Page from "./pages/Playground_Page";
 import NewProject from "./pages/NewProject";
+import Download from "./pages/Download";
 
 const App = () => {
   return (
@@ -16,6 +17,8 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/playground" element={<NewProject />} />
+        <Route path="/playground/download" element={<Download />} />
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Signup />} />
       </Routes>
