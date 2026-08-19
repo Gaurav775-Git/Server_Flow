@@ -9,9 +9,10 @@ import {
   addEdge,
   useReactFlow,
 } from "@xyflow/react";
-import { CustomNode } from "../../utils/reactFlowCustomNodes";
+import { CustomNode } from "../../utils/ReactFlowCustomNodes";
 import HttpForm from "./ConfigForms/HttpForm";
-import { useState } from "react";
+import DatabaseForm from "./ConfigForms/DatabaseForm";
+import { useCallback, useEffect, useState } from "react";
 
 const initialNodes = [];
 
@@ -51,6 +52,9 @@ const FlowCanvas = () => {
     if (selectedNode.data.category === "HTTP") {
       return <HttpForm node={selectedNode} onSave={handleConfigSave} />;
     }
+    if (selectedNode.data.category === "DATABASE") {
+      return <DatabaseForm node={selectedNode} onSave={handleConfigSave} />;
+    }
     return null;
   };
 
@@ -59,6 +63,9 @@ const FlowCanvas = () => {
     setEdges((edges) => addEdge(connection, edges));
   };
   const onDropEvent = (event) => {
+    if (showConfig) {
+      return;
+    }
     const data = event.dataTransfer.getData("application/reactflow");
 
     if (!data) {
@@ -88,6 +95,39 @@ const FlowCanvas = () => {
     setShowConfig(true);
   };
 
+  const generateMasterJson = useCallback(() => {
+    const MasterJson = {
+      project: {
+        name: "Generated Server",
+        version: "1.0",
+      },
+
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        category: node.data.category,
+        type: node.data.type,
+        configuration: node.data.config,
+      })),
+
+      connections: edges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+      })),
+    };
+    console.log("masterjson :", JSON.stringify(MasterJson, null, 2));
+    return MasterJson;
+  }, [nodes, edges]);
+
+  useEffect(() => {
+    const handleGenerateMasterJson = () => {
+      const masterJson = generateMasterJson();
+      window.dispatchEvent(new CustomEvent("master-json-generated", { detail: masterJson }));
+    };
+
+    window.addEventListener("generate-master-json", handleGenerateMasterJson);
+    return () => window.removeEventListener("generate-master-json", handleGenerateMasterJson);
+  }, [generateMasterJson]);
+
   return (
     <div className=" relative w-full h-full">
       <ReactFlow
@@ -97,14 +137,25 @@ const FlowCanvas = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDragOver={(event) => event.preventDefault()}
+        onDragOver={(event) => {
+          if (!showConfig) {
+            event.preventDefault();
+          }
+        }}
         onDrop={onDropEvent}
       >
         <Background />
         <Controls />
         <MiniMap />
       </ReactFlow>
+      {showConfig && <div className="absolute inset-0 z-40 bg-black/20" />}
       {showConfig && renderConfigForm()}
+      {/* <button
+        onClick={generateMasterJson}
+        className="absolute bottom-5 right-5 z-30 rounded-lg bg-cyan-500 px-4 py-2 text-black"
+      >
+        generate code
+      </button> */}
     </div>
   );
 };
