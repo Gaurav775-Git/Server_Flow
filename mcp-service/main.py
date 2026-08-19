@@ -1,8 +1,9 @@
 import json
 import shutil
 import os
+from datetime import datetime
 from fastapi.responses import FileResponse
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
@@ -28,30 +29,36 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
 os.makedirs(PROJECT_DIR, exist_ok=True)
 
+def cleanup_zip(zip_path: str):
+    """Remove the zip file after download."""
+    try:
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+    except:
+        pass
+
 @app.get("/download")
-async def download_project():
+async def download_project(background_tasks: BackgroundTasks):
     """Download the entire user_project folder as a zip file."""
     try:
-        # Check if project directory exists and has content
         if not os.path.exists(PROJECT_DIR):
             raise HTTPException(status_code=404, detail="Project directory not found")
         
         if not os.listdir(PROJECT_DIR):
             raise HTTPException(status_code=404, detail="Project directory is empty")
         
-        # Create zip file name with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         zip_filename = f"server_flow_project_{timestamp}"
         zip_path = os.path.join(BASE_DIR, f"{zip_filename}.zip")
         
-        # Create zip of user_project folder
         shutil.make_archive(zip_filename, "zip", PROJECT_DIR)
         
-        # Check if zip was created successfully
         if not os.path.exists(zip_path):
             raise HTTPException(status_code=500, detail="Failed to create zip file")
         
-        # Return zip file for download
+        # Add cleanup task to background
+        background_tasks.add_task(cleanup_zip, zip_path)
+        
         return FileResponse(
             zip_path,
             media_type="application/zip",
@@ -62,14 +69,6 @@ async def download_project():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
-    
-    finally:
-        # Clean up the zip file after sending
-        try:
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
-        except:
-            pass
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
