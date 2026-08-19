@@ -15,87 +15,7 @@ os.makedirs(PROJECT_DIR, exist_ok=True)
 
 HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 
-def normalize_flow(flow) -> dict:
-    """Validate the small React Flow payload used by the builder."""
-    if isinstance(flow, str):
-        flow = json.loads(flow)
-    if not isinstance(flow, dict):
-        raise ValueError("Flow must be a JSON object.")
-
-    nodes = flow.get("nodes")
-    connections = flow.get("connections", [])
-    if not isinstance(nodes, list) or not isinstance(connections, list):
-        raise ValueError("Flow must contain nodes and connections arrays.")
-
-    normalized_nodes, ids = [], set()
-    for node in nodes:
-        if not isinstance(node, dict) or not isinstance(node.get("id"), str):
-            raise ValueError("Every node needs a string id.")
-        if node["id"] in ids:
-            raise ValueError(f"Duplicate node id: {node['id']}")
-        ids.add(node["id"])
-        category = str(node.get("category", "")).upper()
-        if category not in {"HTTP", "DATABASE", "AUTH"}:
-            raise ValueError(f"Unsupported node category: {category or 'missing'}")
-        config = node.get("configuration") or {}
-        if not isinstance(config, dict):
-            raise ValueError(f"Node {node['id']} configuration must be an object.")
-        normalized_nodes.append({"id": node["id"], "category": category,
-                                 "type": str(node.get("type", "")).upper(), "configuration": config})
-
-    for connection in connections:
-        if not isinstance(connection, dict) or connection.get("source") not in ids or connection.get("target") not in ids:
-            raise ValueError("Every connection must reference two existing node ids.")
-    return {"nodes": normalized_nodes, "connections": connections}
-
-def build_server_from_flow(flow) -> str:
-    """Create a minimal Express server directly from a validated React Flow graph."""
-    graph = normalize_flow(flow)
-    routes, databases, auth_nodes = [], [], []
-    for node in graph["nodes"]:
-        config = node["configuration"]
-        if node["category"] == "HTTP":
-            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
-            endpoint = config.get("endpoint")
-            if not isinstance(endpoint, str) or not endpoint.startswith("/"):
-                raise ValueError(f"HTTP node {node['id']} needs an endpoint beginning with '/'.")
-            routes.append((method.lower(), endpoint, str(config.get("description", ""))))
-        elif node["category"] == "DATABASE":
-            databases.append(str(config.get("description", "Database node")))
-        else:
-            auth_nodes.append(node["type"] or "Authentication")
-
-    app_lines = [
-        "const express = require('express');",
-        "const app = express();",
-        "app.use(express.json());",
-        "",
-    ]
-    for description in databases:
-        app_lines.append(f"// Database: {description.replace(chr(10), ' ')}")
-    for auth_type in auth_nodes:
-        app_lines.append(f"// Authentication node: {auth_type}")
-    if databases or auth_nodes:
-        app_lines.append("")
-    for method, endpoint, description in routes:
-        # json.dumps safely creates JavaScript string literals for user-provided text.
-        app_lines.extend([
-            f"app.{method}({json.dumps(endpoint)}, (req, res) => {{",
-            f"  res.json({{ message: {json.dumps(description or endpoint)} }});",
-            "});",
-            "",
-        ])
-    if not routes:
-        app_lines.extend(["app.get('/', (req, res) => res.json({ message: 'Server Flow is ready' }));", ""])
-    app_lines.extend(["const port = process.env.PORT || 3000;", "app.listen(port, () => console.log(`Server running on ${port}`));", ""])
-
-    os.makedirs(PROJECT_DIR, exist_ok=True)
-    with open(os.path.join(PROJECT_DIR, "app.js"), "w") as file:
-        file.write("\n".join(app_lines))
-    with open(os.path.join(PROJECT_DIR, "package.json"), "w") as file:
-        json.dump({"name": "server-flow-project", "version": "1.0.0", "private": True,
-                   "scripts": {"start": "node app.js"}, "dependencies": {"express": "^4.21.2"}}, file, indent=2)
-    return f"Generated user_project/app.js with {len(routes)} HTTP route(s), {len(databases)} database node(s), and {len(auth_nodes)} auth node(s)."
+# ======================== HELPER FUNCTIONS ========================
 
 def safe_path(relative_path: str) -> str:
     """Resolve a path safely inside PROJECT_DIR."""
@@ -112,7 +32,238 @@ def format_size(size_bytes: int) -> str:
         size_bytes /= 1024.0
     return f"{size_bytes:.2f} TB"
 
-# ======================== EXISTING TOOLS ========================
+def normalize_flow(flow) -> dict:
+    """Validate and normalize the React Flow payload."""
+    if isinstance(flow, str):
+        flow = json.loads(flow)
+    if not isinstance(flow, dict):
+        raise ValueError("Flow must be a JSON object.")
+
+    nodes = flow.get("nodes", [])
+    connections = flow.get("connections", [])
+    
+    if not isinstance(nodes, list):
+        raise ValueError("Flow must contain a nodes array.")
+    if not isinstance(connections, list):
+        raise ValueError("Flow must contain a connections array.")
+
+    normalized_nodes = []
+    ids = set()
+    
+    for node in nodes:
+        if not isinstance(node, dict):
+            raise ValueError("Each node must be a dictionary.")
+        if not isinstance(node.get("id"), str):
+            raise ValueError("Every node needs a string id.")
+        if node["id"] in ids:
+            raise ValueError(f"Duplicate node id: {node['id']}")
+        ids.add(node["id"])
+        
+        category = str(node.get("category", "")).upper()
+        if category not in {"HTTP", "DATABASE", "AUTH"}:
+            raise ValueError(f"Unsupported node category: {category or 'missing'}")
+        
+        config = node.get("configuration") or {}
+        if not isinstance(config, dict):
+            raise ValueError(f"Node {node['id']} configuration must be an object.")
+        
+        # ✅ FIX: Ensure HTTP nodes have an endpoint
+        if category == "HTTP":
+            endpoint = config.get("endpoint") or config.get("path") or config.get("route")
+            if not endpoint:
+                config["endpoint"] = "/"
+            elif not endpoint.startswith("/"):
+                config["endpoint"] = "/" + endpoint.lstrip("/")
+        
+        normalized_nodes.append({
+            "id": node["id"],
+            "category": category,
+            "type": str(node.get("type", "")).upper(),
+            "configuration": config
+        })
+
+    for connection in connections:
+        if not isinstance(connection, dict):
+            raise ValueError("Each connection must be a dictionary.")
+        if connection.get("source") not in ids:
+            raise ValueError(f"Connection source {connection.get('source')} not found.")
+        if connection.get("target") not in ids:
+            raise ValueError(f"Connection target {connection.get('target')} not found.")
+
+    return {"nodes": normalized_nodes, "connections": connections}
+
+def build_server_from_flow(flow) -> str:
+    """Create a complete Express server from a validated React Flow graph."""
+    try:
+        graph = normalize_flow(flow)
+    except ValueError as e:
+        return f"❌ Flow validation failed: {e}"
+
+    routes = []
+    databases = []
+    auth_nodes = []
+    
+    for node in graph["nodes"]:
+        config = node["configuration"]
+        if node["category"] == "HTTP":
+            method = node["type"] if node["type"] in HTTP_METHODS else "GET"
+            endpoint = config.get("endpoint") or config.get("path") or config.get("route") or "/"
+            
+            # Ensure endpoint starts with '/'
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint.lstrip("/")
+            
+            description = str(config.get("description", ""))
+            routes.append((method.lower(), endpoint, description))
+            
+        elif node["category"] == "DATABASE":
+            databases.append(str(config.get("description", "Database node")))
+        else:
+            auth_nodes.append(node["type"] or "Authentication")
+
+    # Build the Express server code
+    app_lines = [
+        "const express = require('express');",
+        "const app = express();",
+        "app.use(express.json());",
+        "",
+    ]
+    
+    # Add database comments
+    for description in databases:
+        app_lines.append(f"// Database: {description.replace(chr(10), ' ')}")
+    
+    # Add auth comments
+    for auth_type in auth_nodes:
+        app_lines.append(f"// Authentication node: {auth_type}")
+    
+    if databases or auth_nodes:
+        app_lines.append("")
+    
+    # Add routes
+    if routes:
+        for method, endpoint, description in routes:
+            app_lines.extend([
+                f"app.{method}({json.dumps(endpoint)}, (req, res) => {{",
+                f"  res.json({{ message: {json.dumps(description or endpoint)} }});",
+                "});",
+                "",
+            ])
+    else:
+        app_lines.extend([
+            "app.get('/', (req, res) => res.json({ message: 'Server Flow is ready' }));",
+            "",
+        ])
+    
+    # Start server
+    app_lines.extend([
+        "const port = process.env.PORT || 3000;",
+        "app.listen(port, () => console.log(`Server running on ${port}`));",
+        ""
+    ])
+
+    # Write files
+    os.makedirs(PROJECT_DIR, exist_ok=True)
+    
+    app_js_path = os.path.join(PROJECT_DIR, "app.js")
+    with open(app_js_path, "w") as file:
+        file.write("\n".join(app_lines))
+    
+    package_json_path = os.path.join(PROJECT_DIR, "package.json")
+    if not os.path.exists(package_json_path):
+        with open(package_json_path, "w") as file:
+            json.dump({
+                "name": "server-flow-project",
+                "version": "1.0.0",
+                "private": True,
+                "scripts": {
+                    "start": "node app.js",
+                    "dev": "nodemon app.js"
+                },
+                "dependencies": {
+                    "express": "^4.21.2",
+                    "cors": "^2.8.5",
+                    "dotenv": "^16.4.5"
+                },
+                "devDependencies": {
+                    "nodemon": "^3.0.0"
+                }
+            }, file, indent=2)
+    
+    return f"✅ Generated user_project/app.js with {len(routes)} HTTP route(s), {len(databases)} database node(s), and {len(auth_nodes)} auth node(s)."
+
+# ======================== MCP TOOLS ========================
+
+@mcp.tool()
+def validate_flow(flow: dict) -> str:
+    """Validate the React Flow graph before generation."""
+    try:
+        normalized = normalize_flow(flow)
+        return f"✅ Flow is valid. Found {len(normalized['nodes'])} nodes and {len(normalized['connections'])} connections."
+    except ValueError as e:
+        return f"❌ Invalid flow: {e}"
+
+@mcp.tool()
+def generate_server_from_flow(flow: dict) -> str:
+    """Generate user_project/app.js and package.json from the React Flow nodes and connections."""
+    return build_server_from_flow(flow)
+
+@mcp.tool()
+def project_files(action: str, path: str = "", content: str = "") -> str:
+    """Master project-file tool. Use action=list, read, write, delete."""
+    try:
+        if action == "list":
+            file_path = safe_path(path) if path else PROJECT_DIR
+            if not os.path.isdir(file_path):
+                return f"Directory not found: {path or '.'}"
+            items = os.listdir(file_path)
+            if not items:
+                return "Directory is empty."
+            result = []
+            for item in sorted(items):
+                item_path = os.path.join(file_path, item)
+                if os.path.isdir(item_path):
+                    result.append(f"📁 {item}/")
+                else:
+                    size = os.path.getsize(item_path)
+                    result.append(f"📄 {item} ({format_size(size)})")
+            return "\n".join(result)
+            
+        elif action == "read":
+            if not path:
+                return "Error: path required for read action"
+            file_path = safe_path(path)
+            if not os.path.exists(file_path):
+                return f"File not found: {path}"
+            with open(file_path, "r") as file:
+                return file.read()
+                
+        elif action == "write":
+            if not path:
+                return "Error: path required for write action"
+            file_path = safe_path(path)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "w") as file:
+                file.write(content)
+            return f"✅ Wrote {path}"
+            
+        elif action == "delete":
+            if not path:
+                return "Error: path required for delete action"
+            file_path = safe_path(path)
+            if not os.path.exists(file_path):
+                return f"File not found: {path}"
+            if os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+                return f"✅ Deleted folder: {path}"
+            else:
+                os.remove(file_path)
+                return f"✅ Deleted file: {path}"
+        else:
+            return "Unsupported action. Use list, read, write, or delete."
+            
+    except (OSError, ValueError) as exc:
+        return f"❌ File operation failed: {exc}"
 
 @mcp.tool()
 def jsonDataResolver(data: str) -> str:
@@ -126,49 +277,57 @@ def jsonDataResolver(data: str) -> str:
         return f"Invalid flow JSON: {exc}"
 
 @mcp.tool()
-def generate_server_from_flow(flow: dict) -> str:
-    """Generate user_project/app.js and package.json from the React Flow nodes and connections."""
-    return build_server_from_flow(flow)
-
-@mcp.tool()
 def hello(name: str) -> str:
     """Greet a person by name."""
-    return f"hello, {name}"
+    return f"Hello, {name}!"
 
 @mcp.tool()
 def read_file(filename: str) -> str:
     """Read and return the contents of a text file."""
-    path = safe_path(filename)
-    with open(path, "r") as f:
-        return f.read()
+    try:
+        path = safe_path(filename)
+        with open(path, "r") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error: {e}"
 
 @mcp.tool()
 def write_file(filename: str, content: str) -> str:
     """Write text content to a file. Overwrites if it already exists."""
-    path = safe_path(filename)
-    with open(path, "w") as f:
-        f.write(content)
-    return f"Data inserted in {filename} successfully"
+    try:
+        path = safe_path(filename)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(content)
+        return f"✅ Data written to {filename}"
+    except Exception as e:
+        return f"Error: {e}"
 
 @mcp.tool()
 def create_file(filename: str, content: str) -> str:
     """Create a file if it doesn't exist, and write content into it."""
-    path = safe_path(filename)
-    if os.path.exists(path):
-        return f"File {filename} already exists."
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w") as f:
-        f.write(content)
-    return f"File created: {filename}"
+    try:
+        path = safe_path(filename)
+        if os.path.exists(path):
+            return f"File {filename} already exists."
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(content)
+        return f"✅ File created: {filename}"
+    except Exception as e:
+        return f"Error: {e}"
 
 @mcp.tool()
 def create_folder(foldername: str) -> str:
     """Create a new folder. Fails if it already exists."""
-    path = safe_path(foldername)
-    if os.path.exists(path):
-        return f"Folder {foldername} already exists."
-    os.mkdir(path)
-    return f"Folder {foldername} created successfully."
+    try:
+        path = safe_path(foldername)
+        if os.path.exists(path):
+            return f"Folder {foldername} already exists."
+        os.mkdir(path)
+        return f"✅ Folder {foldername} created."
+    except Exception as e:
+        return f"Error: {e}"
 
 @mcp.tool()
 def list_files(directory: str = "") -> str:
@@ -176,6 +335,8 @@ def list_files(directory: str = "") -> str:
     try:
         path = safe_path(directory)
         items = os.listdir(path)
+        if not items:
+            return "Directory is empty."
         result = []
         for item in sorted(items):
             item_path = os.path.join(path, item)
@@ -184,25 +345,23 @@ def list_files(directory: str = "") -> str:
             else:
                 size = os.path.getsize(item_path)
                 result.append(f"📄 {item} ({format_size(size)})")
-        return "\n".join(result) if result else "Directory is empty."
-    except FileNotFoundError:
-        return f"Directory '{directory}' not found."
+        return "\n".join(result)
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
-def delete_file(filename: str, permanent: bool = False) -> str:
-    """Delete a file. Moves to trash by default, permanently if permanent=True."""
+def delete_file(filename: str) -> str:
+    """Delete a file from the project directory."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
             return f"File {filename} does not exist."
         if os.path.isdir(path):
-            return f"{filename} is a directory. Use delete_folder instead."
+            return f"{filename} is a folder. Use delete_folder instead."
         os.remove(path)
-        return f"File {filename} deleted{' permanently' if permanent else ''}."
+        return f"✅ File {filename} deleted."
     except Exception as e:
-        return f"Error deleting file: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def delete_folder(foldername: str, recursive: bool = False) -> str:
@@ -215,12 +374,12 @@ def delete_folder(foldername: str, recursive: bool = False) -> str:
             return f"{foldername} is a file. Use delete_file instead."
         if recursive:
             shutil.rmtree(path)
-            return f"Folder {foldername} deleted recursively."
+            return f"✅ Folder {foldername} deleted recursively."
         else:
             os.rmdir(path)
-            return f"Folder {foldername} deleted."
+            return f"✅ Folder {foldername} deleted."
     except OSError as e:
-        return f"Error: {str(e)}. Folder may not be empty. Use recursive=True."
+        return f"Error: {e}. Folder may not be empty. Use recursive=True."
 
 @mcp.tool()
 def move_file(source: str, destination: str) -> str:
@@ -232,9 +391,9 @@ def move_file(source: str, destination: str) -> str:
             return f"Source {source} does not exist."
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.move(src_path, dst_path)
-        return f"Moved/renamed {source} → {destination}"
+        return f"✅ Moved/renamed {source} → {destination}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def copy_file(source: str, destination: str) -> str:
@@ -246,9 +405,9 @@ def copy_file(source: str, destination: str) -> str:
             return f"Source {source} does not exist."
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.copy2(src_path, dst_path)
-        return f"Copied {source} → {destination}"
+        return f"✅ Copied {source} → {destination}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def file_info(path: str) -> str:
@@ -258,13 +417,14 @@ def file_info(path: str) -> str:
         if not os.path.exists(full_path):
             return f"Path {path} does not exist."
         
+        stat = os.stat(full_path)
         info = {
             "name": os.path.basename(full_path),
             "type": "Directory" if os.path.isdir(full_path) else "File",
             "size": format_size(os.path.getsize(full_path)) if os.path.isfile(full_path) else "N/A",
-            "created": datetime.fromtimestamp(os.path.getctime(full_path)).strftime("%Y-%m-%d %H:%M:%S"),
-            "modified": datetime.fromtimestamp(os.path.getmtime(full_path)).strftime("%Y-%m-%d %H:%M:%S"),
-            "accessed": datetime.fromtimestamp(os.path.getatime(full_path)).strftime("%Y-%m-%d %H:%M:%S"),
+            "created": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S"),
+            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            "accessed": datetime.fromtimestamp(stat.st_atime).strftime("%Y-%m-%d %H:%M:%S"),
             "path": full_path
         }
         if os.path.isdir(full_path):
@@ -275,11 +435,11 @@ def file_info(path: str) -> str:
         
         return json.dumps(info, indent=2)
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def read_json(filename: str) -> str:
-    """Read a JSON file and return its content as a Python dictionary (pretty formatted)."""
+    """Read a JSON file and return its content pretty formatted."""
     try:
         path = safe_path(filename)
         with open(path, "r") as f:
@@ -288,21 +448,21 @@ def read_json(filename: str) -> str:
     except FileNotFoundError:
         return f"File {filename} not found."
     except json.JSONDecodeError as e:
-        return f"Invalid JSON: {str(e)}"
+        return f"Invalid JSON: {e}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def write_json(filename: str, data: dict) -> str:
-    """Write a dictionary to a JSON file (pretty formatted, overwrites if exists)."""
+    """Write a dictionary to a JSON file (pretty formatted)."""
     try:
         path = safe_path(filename)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        return f"JSON written to {filename}"
+        return f"✅ JSON written to {filename}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def update_json(filename: str, updates: dict) -> str:
@@ -328,9 +488,9 @@ def update_json(filename: str, updates: dict) -> str:
         
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        return f"JSON updated in {filename}"
+        return f"✅ JSON updated in {filename}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def search_in_file(filename: str, pattern: str, case_sensitive: bool = False) -> str:
@@ -353,7 +513,7 @@ def search_in_file(filename: str, pattern: str, case_sensitive: bool = False) ->
             return f"Found {len(matches)} matches:\n" + "\n".join(matches)
         return f"No matches found for pattern: {pattern}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def find_in_files(directory: str, pattern: str, file_pattern: str = "*") -> str:
@@ -380,11 +540,11 @@ def find_in_files(directory: str, pattern: str, file_pattern: str = "*") -> str:
             return f"Found {len(results)} matches:\n" + "\n".join(results[:50])
         return f"No matches found for pattern: {pattern} in {directory}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def get_file_hash(filename: str, algorithm: str = "sha256") -> str:
-    """Get the hash (SHA256 or MD5) of a file to verify its integrity."""
+    """Get the hash of a file to verify its integrity."""
     try:
         path = safe_path(filename)
         if not os.path.exists(path):
@@ -407,7 +567,7 @@ def get_file_hash(filename: str, algorithm: str = "sha256") -> str:
         
         return f"{algorithm.upper()}: {hasher.hexdigest()}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def count_files(directory: str, recursive: bool = False) -> str:
@@ -434,7 +594,7 @@ def count_files(directory: str, recursive: bool = False) -> str:
         
         return f"📊 {directory}:\n📁 Folders: {total_folders}\n📄 Files: {total_files}\n📦 Total items: {total_files + total_folders}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def get_folder_size(directory: str) -> str:
@@ -452,7 +612,7 @@ def get_folder_size(directory: str) -> str:
         
         return f"Total size of {directory}: {format_size(total_size)}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def read_file_range(filename: str, start_line: int, end_line: int) -> str:
@@ -478,7 +638,7 @@ def read_file_range(filename: str, start_line: int, end_line: int) -> str:
         
         return "\n".join(result)
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def append_to_file(filename: str, content: str) -> str:
@@ -490,9 +650,9 @@ def append_to_file(filename: str, content: str) -> str:
             f.write(content)
             if not content.endswith("\n"):
                 f.write("\n")
-        return f"Appended to {filename}"
+        return f"✅ Appended to {filename}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def prepend_to_file(filename: str, content: str) -> str:
@@ -511,19 +671,15 @@ def prepend_to_file(filename: str, content: str) -> str:
                 f.write("\n")
             f.write(existing)
         
-        return f"Prepended to {filename}"
+        return f"✅ Prepended to {filename}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 @mcp.tool()
 def get_file_extension(filename: str) -> str:
     """Get the file extension from a filename."""
-    try:
-        path = safe_path(filename)
-        _, ext = os.path.splitext(path)
-        return ext if ext else "No extension"
-    except Exception as e:
-        return f"Error: {str(e)}"
+    _, ext = os.path.splitext(filename)
+    return ext if ext else "No extension"
 
 @mcp.tool()
 def change_file_extension(filename: str, new_extension: str) -> str:
@@ -541,9 +697,9 @@ def change_file_extension(filename: str, new_extension: str) -> str:
         
         os.rename(path, new_path)
         relative_new = os.path.relpath(new_path, PROJECT_DIR)
-        return f"Extension changed: {filename} → {relative_new}"
+        return f"✅ Extension changed: {filename} → {relative_new}"
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Error: {e}"
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
