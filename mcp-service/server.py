@@ -7,6 +7,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 import re
 
+# Try to import your LLM module
 try:
     from llm import ask_llm
     HAS_LLM = True
@@ -15,6 +16,14 @@ except ImportError:
     ask_llm = None
 
 mcp = FastMCP("Server_Flow")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def safe_path(relative_path: str) -> str:
+    """Resolve a path safely, allowing subfolders but blocking traversal outside BASE_DIR."""
+    full_path = os.path.abspath(os.path.join(BASE_DIR, relative_path))
+    if not full_path.startswith(BASE_DIR):
+        raise ValueError("Access outside the allowed directory is not permitted.")
+    return full_path
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
@@ -93,6 +102,8 @@ def normalize_flow(flow) -> dict:
 
     return {"nodes": normalized_nodes, "connections": connections}
 
+# ====================== LLM CODE GENERATION ======================
+
 def generate_code_with_llm(nodes, connections):
     if not HAS_LLM or ask_llm is None:
         return None
@@ -140,6 +151,7 @@ Generate ONLY the JavaScript code for a complete `app.js` file (no extra text or
     try:
         response = ask_llm([{"role": "user", "content": prompt}])
         code = response.get("content", "")
+        # Remove markdown code fences if present
         code = re.sub(r'^```javascript\s*', '', code, flags=re.MULTILINE)
         code = re.sub(r'^```\s*', '', code, flags=re.MULTILINE)
         code = re.sub(r'```$', '', code, flags=re.MULTILINE)
@@ -147,6 +159,8 @@ Generate ONLY the JavaScript code for a complete `app.js` file (no extra text or
     except Exception as e:
         print(f"LLM generation error: {e}")
         return None
+
+# ====================== FALLBACK TEMPLATE GENERATOR ======================
 
 def generate_app_js_template(routes, middlewares, database_config, auth_config):
     lines = [
@@ -570,6 +584,8 @@ def generate_readme(project_name, routes):
     
     return "\n".join(lines)
 
+# ====================== MAIN PROJECT BUILDER ======================
+
 def build_complete_project(flow, project_name="server-flow-api"):
     try:
         graph = normalize_flow(flow)
@@ -579,6 +595,7 @@ def build_complete_project(flow, project_name="server-flow-api"):
     nodes = graph["nodes"]
     connections = graph["connections"]
 
+    # Extract route info for potential template fallback
     routes = []
     middlewares = []
     database_config = None
@@ -623,18 +640,23 @@ def build_complete_project(flow, project_name="server-flow-api"):
     for folder in folders:
         os.makedirs(os.path.join(project_path, folder), exist_ok=True)
 
+    # Attempt LLM generation for app.js
     llm_code = generate_code_with_llm(nodes, connections) if HAS_LLM else None
 
     if llm_code:
+        # Use LLM-generated code
         with open(os.path.join(project_path, "src", "app.js"), "w") as f:
             f.write(llm_code)
     else:
+        # Fallback: use template generator
         with open(os.path.join(project_path, "src", "app.js"), "w") as f:
             f.write(generate_app_js_template(routes, middlewares, database_config, auth_config))
 
+    # Server.js (always generated from template)
     with open(os.path.join(project_path, "src", "server.js"), "w") as f:
         f.write(generate_server_js())
 
+    # package.json
     deps = {}
     if database_config:
         deps["pg"] = "^8.11.0"
@@ -644,17 +666,21 @@ def build_complete_project(flow, project_name="server-flow-api"):
     with open(os.path.join(project_path, "package.json"), "w") as f:
         json.dump(generate_package_json(project_name, deps), f, indent=2)
 
+    # .env.example
     with open(os.path.join(project_path, ".env.example"), "w") as f:
         f.write(generate_env_example())
 
+    # README
     with open(os.path.join(project_path, "README.md"), "w") as f:
         f.write(generate_readme(project_name, routes))
 
+    # Docker and docker-compose
     with open(os.path.join(project_path, "Dockerfile"), "w") as f:
         f.write(generate_dockerfile())
     with open(os.path.join(project_path, "docker-compose.yml"), "w") as f:
         f.write(generate_docker_compose())
 
+    # .gitignore
     with open(os.path.join(project_path, ".gitignore"), "w") as f:
         f.write("""node_modules/
 .env
@@ -665,16 +691,19 @@ coverage/
 *.pid
 """)
 
+    # Database config if needed
     if database_config:
         with open(os.path.join(project_path, "src", "config", "database.js"), "w") as f:
             f.write(generate_database_config())
 
+    # Middleware files
     with open(os.path.join(project_path, "src", "middleware", "validate.js"), "w") as f:
         f.write(generate_validation_middleware())
     if auth_config:
         with open(os.path.join(project_path, "src", "middleware", "auth.js"), "w") as f:
             f.write(generate_auth_middleware())
 
+    # Routes and controllers
     if routes:
         route_groups = {}
         for route in routes:
@@ -694,6 +723,7 @@ coverage/
         with open(os.path.join(project_path, "src", "routes", "index.js"), "w") as f:
             f.write(generate_routes_index(routes))
 
+    # utils/helpers.js
     with open(os.path.join(project_path, "src", "utils", "helpers.js"), "w") as f:
         f.write("""exports.asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
@@ -713,6 +743,7 @@ exports.pick = (obj, keys) => {
 };
 """)
 
+    # models/base.model.js
     with open(os.path.join(project_path, "src", "models", "base.model.js"), "w") as f:
         f.write("""const { pool } = require('../config/database');
 
@@ -733,6 +764,8 @@ module.exports = BaseModel;
 
     status = "LLM" if llm_code else "Template"
     return f"Complete project generated using {status}: {project_name}/ with {len(routes)} routes, database: {database_config['type'] if database_config else 'None'}, auth: {auth_config['type'] if auth_config else 'None'}"
+
+# ====================== MCP TOOLS ======================
 
 @mcp.tool()
 def validate_flow(flow: dict) -> str:
@@ -1213,5 +1246,4 @@ def change_file_extension(filename: str, new_extension: str) -> str:
         return f"Error: {e}"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
-    mcp.run(transport="sse", host="0.0.0.0", port=port)
+    mcp.run(transport="stdio")
