@@ -258,6 +258,7 @@ htmlcov/
 .tox/
 .hypothesis/
 .pytest_cache/
+.__pycache__/
 
 # MyPy
 .mypy_cache/
