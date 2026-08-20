@@ -69,7 +69,7 @@ const Chat_Box = () => {
       const res = await fetch('http://127.0.0.1:8001/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: JSON.stringify(masterJson, null, 2) }),
+        body: JSON.stringify({ master_json: masterJson }),
       })
       if (!res.ok) throw new Error('Unable to reach the Build Assistant.')
 
