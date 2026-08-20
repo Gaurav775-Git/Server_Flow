@@ -7,10 +7,28 @@ import WhyServerFlow from "../components/Sections/home/WhyServerFlow";
 import TestimonialsSection from "../components/Sections/home/TestimonialsSection";
 import CTASection from "../components/Sections/home/CTASection";
 
+const homeNavLinks = [
+  { label: "Products", hasDropdown: true, isActive: true },
+  { label: "Solutions", hasDropdown: true },
+  { label: "Developers", hasDropdown: true },
+  { label: "Pricing" },
+  { label: "Docs" },
+];
+
+const homeActionItems = [
+  { label: "Search", icon: "search" },
+  { label: "Profile", icon: "account_circle" },
+  { label: "Contact Sales" },
+];
+
 const Home = () => {
   return (
     <div className="min-h-screen bg-[#05090E]">
-      <NavBar />
+      <NavBar
+        navLinks={homeNavLinks}
+        actionItems={homeActionItems}
+        cta={{ label: "Start Building", href: "/dashboard" }}
+      />
 
       <HeroSection />
 
