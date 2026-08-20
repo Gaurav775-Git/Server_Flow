@@ -5,6 +5,7 @@ import ProductsSection from "../components/sections/home/ProductsSection";
 import PlatformSection from "../components/sections/home/PlatformSection";
 import WhyServerFlow from "../components/Sections/home/WhyServerFlow";
 import TestimonialsSection from "../components/Sections/home/TestimonialsSection";
+import CTASection from "../components/Sections/home/CTASection";
 
 const Home = () => {
   return (
@@ -20,7 +21,12 @@ const Home = () => {
       <WhyServerFlow />
 
       <TestimonialsSection />
+
+
+      <CTASection />
+
       <Footer />
+      
     </div>
   );
 };
