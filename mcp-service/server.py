@@ -16,6 +16,14 @@ except ImportError:
     ask_llm = None
 
 mcp = FastMCP("Server_Flow")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def safe_path(relative_path: str) -> str:
+    """Resolve a path safely, allowing subfolders but blocking traversal outside BASE_DIR."""
+    full_path = os.path.abspath(os.path.join(BASE_DIR, relative_path))
+    if not full_path.startswith(BASE_DIR):
+        raise ValueError("Access outside the allowed directory is not permitted.")
+    return full_path
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.join(BASE_DIR, "user_project")

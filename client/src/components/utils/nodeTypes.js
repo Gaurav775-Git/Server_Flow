@@ -1,5 +1,6 @@
 export const nodeTypes = [
   {
+    kind: "http_route",
     type: "GET",
     label: "GET",
     category: "HTTP",
@@ -11,6 +12,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "http_route",
     type: "POST",
     label: "POST",
     category: "HTTP",
@@ -22,6 +24,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "http_route",
     type: "PUT",
     label: "PUT",
     category: "HTTP",
@@ -33,6 +36,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "http_route",
     type: "PATCH",
     label: "PATCH",
     category: "HTTP",
@@ -44,6 +48,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "http_route",
     type: "DELETE",
     label: "DELETE",
     category: "HTTP",
@@ -55,6 +60,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "mongodb_database",
     type: "MONGODB",
     label: "MongoDB",
     category: "DATABASE",
@@ -66,6 +72,7 @@ export const nodeTypes = [
     },
   },
   {
+    kind: "jwt_authentication",
     type: "JWT",
     label: "JWT",
     category: "AUTH",
