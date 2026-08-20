@@ -20,7 +20,7 @@ const DownloadBox = () => {
           authentication, and required dependencies.
         </p>
 
-        <button className={styles.button} onClick={()=>{window.location.assign('http://127.0.0.1:8001/download')}}>
+        <button className={styles.button}>
           <svg
             strokeLinejoin="round"
             strokeLinecap="round"
