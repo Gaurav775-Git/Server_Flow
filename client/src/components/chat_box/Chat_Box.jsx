@@ -75,7 +75,7 @@ const Chat_Box = () => {
 
       const result = await res.json()
       setReply(result.reply)
-      window.location.assign('http://127.0.0.1:8001/download')
+      window.location.assign('/playground/download')
     } catch (error) {
       setReply(error.message || 'Something went wrong. Please try again.')
     } finally {
