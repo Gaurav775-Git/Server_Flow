@@ -1,7 +1,10 @@
 const LoginRightIcon = () => {
   return (
     <>
-      <div className="flex flex-col gap-50 right-50 absolute z-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none hidden xl:flex flex-col gap-24 right-12 absolute z-10"
+      >
         <svg
           width="80"
           height="64"
@@ -28,8 +31,8 @@ const LoginRightIcon = () => {
         </svg>
       </div>
       <div
-        className="absolute -right-40 top-1/2 -translate-y-1/2
-          w-150 h-150 rounded-full blur-[180px]"
+        aria-hidden="true"
+        className="pointer-events-none hidden xl:block absolute -right-52 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-[140px]"
         style={{
           background: "rgba(42, 67, 82, 0.45)",
         }}

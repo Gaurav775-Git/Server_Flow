@@ -5,13 +5,15 @@ import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
 const Login = () => {
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-[#e1e2eb]">
+    <div className="min-h-screen bg-[#0b0e14] text-[#e1e2eb] overflow-x-hidden">
       <NavBar />
-      <div className="min-h-screen relative flex justify-center items-center bg-[#10131A]">
+      <main className="relative flex items-center justify-center bg-[#10131A] px-4 py-12 sm:px-6 lg:px-8">
         <LoginLeftIcon />
-        <LoginCard />
+        <div className="w-full max-w-md sm:max-w-lg">
+          <LoginCard />
+        </div>
         <LoginRightIcon />
-      </div>
+      </main>
       <Footer />
     </div>
   );
