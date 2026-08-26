@@ -39,8 +39,7 @@ const DownloadBox = () => {
             <path d="M12 4l0 12" />
           </svg>
 
-          <span className={styles.button__text}>Download</span>
-        </button>
+          <span className={styles.button__text} onClick={() => window.location.href = 'http://localhost:8001/download'}>Download</span></button>
         <p className="text-gray-600 text-xs mt-5">ZIP archive • Ready to run</p>
       </div>
     </div>
