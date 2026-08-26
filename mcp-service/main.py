@@ -6,8 +6,8 @@ from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import ClientSession
+from mcp.client.sse import sse_client
 from llm import ask_llm
 
 app = FastAPI()
@@ -30,16 +30,22 @@ PROJECT_DIR = os.path.join(BASE_DIR, "user_project")
 os.makedirs(PROJECT_DIR, exist_ok=True)
 
 def cleanup_zip(zip_path: str):
-    """Remove the zip file after download."""
     try:
         if os.path.exists(zip_path):
             os.remove(zip_path)
     except:
         pass
 
+@app.get("/")
+async def root():
+    return {"message": "Server Flow MCP Service", "status": "running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
 @app.get("/download")
 async def download_project(background_tasks: BackgroundTasks):
-    """Download the entire user_project folder as a zip file."""
     try:
         if not os.path.exists(PROJECT_DIR):
             raise HTTPException(status_code=404, detail="Project directory not found")
@@ -56,7 +62,6 @@ async def download_project(background_tasks: BackgroundTasks):
         if not os.path.exists(zip_path):
             raise HTTPException(status_code=500, detail="Failed to create zip file")
         
-        # Add cleanup task to background
         background_tasks.add_task(cleanup_zip, zip_path)
         
         return FileResponse(
@@ -72,9 +77,9 @@ async def download_project(background_tasks: BackgroundTasks):
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    server_params = StdioServerParameters(command="python", args=["server.py"])
-
-    async with stdio_client(server_params) as (read, write):
+    mcp_url = os.environ.get("MCP_URL", "http://localhost:8000/sse")
+    
+    async with sse_client(mcp_url) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
