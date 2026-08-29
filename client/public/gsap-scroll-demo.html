@@ -6,111 +6,236 @@
     <title>ServerFlow GSAP Scroll Demo</title>
     <style>
       :root {
-        --bg: #090b12;
-        --panel: #101521;
-        --panel-2: #151d2f;
+        --bg: #070a12;
+        --bg-soft: #0c1220;
+        --panel: #101726;
+        --panel-2: #151f33;
         --text: #e8edf7;
-        --muted: #9fb0cf;
+        --muted: #9eb0d3;
         --accent: #7d5cff;
         --accent-2: #22d3ee;
+        --accent-3: #a78bfa;
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html,
       body {
         margin: 0;
-        background: radial-gradient(circle at 10% 10%, #17213a 0%, var(--bg) 45%), var(--bg);
+        padding: 0;
+      }
+
+      body {
+        background:
+          radial-gradient(circle at 12% 10%, #1a2540 0%, transparent 40%),
+          radial-gradient(circle at 88% 70%, #13243f 0%, transparent 35%),
+          var(--bg);
         color: var(--text);
         font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         line-height: 1.6;
         overflow-x: hidden;
       }
 
+      .scroll-progress {
+        position: fixed;
+        inset: 0 0 auto 0;
+        height: 4px;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .scroll-progress span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        transform-origin: left center;
+        transform: scaleX(0);
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        box-shadow: 0 0 18px rgba(125, 92, 255, 0.8);
+      }
+
       .page {
         position: relative;
       }
 
-      .shape {
+      .grid-overlay {
         position: fixed;
-        width: 26rem;
-        height: 26rem;
-        border-radius: 50%;
-        right: -8rem;
-        top: 20vh;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        filter: blur(2px) saturate(1.1);
-        opacity: 0.35;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.16;
+        z-index: 0;
+        background-image:
+          linear-gradient(to right, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+        background-size: 56px 56px;
+      }
+
+      .shape,
+      .shape-2,
+      .shape-3 {
+        position: fixed;
         pointer-events: none;
         will-change: transform;
         z-index: 0;
       }
 
+      .shape {
+        width: 26rem;
+        height: 26rem;
+        border-radius: 50%;
+        right: -8rem;
+        top: 18vh;
+        opacity: 0.32;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        filter: blur(4px) saturate(1.1);
+      }
+
+      .shape-2 {
+        width: 15rem;
+        height: 15rem;
+        left: -4rem;
+        bottom: 12vh;
+        background: linear-gradient(130deg, #0ea5e9, #14b8a6);
+        clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 18% 100%, 0% 35%);
+        opacity: 0.26;
+      }
+
+      .shape-3 {
+        width: 12rem;
+        height: 12rem;
+        right: 18vw;
+        bottom: 24vh;
+        border-radius: 1.25rem;
+        background: linear-gradient(135deg, #7c3aed, #c084fc);
+        opacity: 0.18;
+      }
+
       section {
         position: relative;
         z-index: 1;
-        max-width: 1100px;
+        max-width: 1120px;
         margin: 0 auto;
-        padding: 20vh 1.25rem;
+        padding: 18vh 1.25rem;
       }
 
       .hero {
         min-height: 100vh;
         display: grid;
         align-content: center;
-        gap: 1.5rem;
+        gap: 1.2rem;
       }
 
       .eyebrow {
-        color: var(--accent-2);
-        letter-spacing: 0.08em;
+        width: fit-content;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
+        color: var(--accent-2);
+        border: 1px solid #2a3958;
+        background: rgba(34, 211, 238, 0.08);
+        padding: 0.3rem 0.65rem;
+        border-radius: 99px;
       }
 
       h1,
-      h2 {
+      h2,
+      h3 {
         margin: 0;
         line-height: 1.1;
       }
 
       h1 {
-        font-size: clamp(2.2rem, 6vw, 5rem);
+        font-size: clamp(2.3rem, 6vw, 5.2rem);
         max-width: 14ch;
       }
 
       h2 {
-        font-size: clamp(1.6rem, 4vw, 2.8rem);
+        font-size: clamp(1.7rem, 4vw, 2.9rem);
         max-width: 20ch;
       }
 
       p {
         margin: 0;
-        max-width: 70ch;
+        max-width: 72ch;
         color: var(--muted);
-        font-size: clamp(1rem, 2vw, 1.125rem);
+        font-size: clamp(1rem, 2vw, 1.1rem);
+      }
+
+      .hero-metrics {
+        margin-top: 1.2rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .metric {
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid #2a3550;
+        border-radius: 0.9rem;
+        padding: 0.85rem;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 1.4rem;
+        color: #f5f7ff;
+      }
+
+      .metric span {
+        color: #9ab1d6;
+        font-size: 0.88rem;
+      }
+
+      .about-layout {
+        margin-top: 1.3rem;
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1.15fr 0.85fr;
+        align-items: stretch;
+      }
+
+      .about-panel,
+      .code-panel {
+        background: linear-gradient(180deg, var(--panel-2), var(--panel));
+        border: 1px solid #2a3550;
+        border-radius: 1rem;
+        padding: 1rem;
+      }
+
+      .code-panel pre {
+        margin: 0;
+        overflow-x: auto;
+        font-size: 0.83rem;
+        color: #cfe0ff;
       }
 
       .features-grid {
-        margin-top: 2.2rem;
+        margin-top: 2rem;
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
       }
 
       .card {
+        position: relative;
+        overflow: hidden;
         background: linear-gradient(180deg, var(--panel-2), var(--panel));
-        border: 1px solid #2a3550;
+        border: 1px solid #2d3c5d;
         border-radius: 1rem;
         padding: 1.1rem;
         transform: translateZ(0);
         will-change: transform, opacity;
       }
 
-      .card h3 {
-        margin: 0 0 0.35rem;
-        font-size: 1.1rem;
+      .card::after {
+        content: "";
+        position: absolute;
+        inset: -40% 30% auto -40%;
+        height: 8rem;
+        background: radial-gradient(circle, rgba(125, 92, 255, 0.25), transparent 70%);
+        pointer-events: none;
       }
 
       .card p {
@@ -122,32 +247,54 @@
       }
 
       .pin-frame {
-        min-height: 70vh;
+        min-height: 74vh;
         display: grid;
         align-content: center;
         gap: 1rem;
       }
 
+      .pinned-track {
+        overflow: hidden;
+        border: 1px solid #324568;
+        border-radius: 1rem;
+        background: linear-gradient(180deg, #0e1626, #121b2d);
+        padding: 1rem;
+      }
+
       .stages {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        display: flex;
         gap: 1rem;
       }
 
       .stage-box {
+        flex: 0 0 calc(33.333% - 0.67rem);
         background: #111827;
         border: 1px solid #3a4b6e;
-        border-radius: 1rem;
-        padding: 1.2rem;
-        min-height: 8.5rem;
-        opacity: 0;
-        transform: translateY(36px) scale(0.98);
+        border-radius: 0.95rem;
+        padding: 1rem;
+        min-height: 10rem;
+        opacity: 0.18;
+        transform: translateY(28px) scale(0.98);
       }
 
-      @media (max-width: 900px) {
+      .stage-box p {
+        font-size: 0.95rem;
+      }
+
+      .final-note {
+        border-left: 2px solid var(--accent-3);
+        padding-left: 1rem;
+      }
+
+      @media (max-width: 960px) {
         .features-grid,
-        .stages {
+        .hero-metrics,
+        .about-layout {
           grid-template-columns: 1fr;
+        }
+
+        .stage-box {
+          flex-basis: 85%;
         }
 
         .shape {
@@ -155,28 +302,73 @@
           height: 18rem;
           right: -7rem;
         }
+
+        .shape-2 {
+          width: 11rem;
+          height: 11rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
       }
     </style>
   </head>
   <body>
+    <div class="scroll-progress" aria-hidden="true"><span></span></div>
+
     <main class="page">
-      <div class="shape" aria-hidden="true"></div>
+      <div class="grid-overlay" aria-hidden="true"></div>
+      <div class="shape parallax" data-speed="0.18" aria-hidden="true"></div>
+      <div class="shape-2 parallax" data-speed="-0.1" aria-hidden="true"></div>
+      <div class="shape-3 parallax" data-speed="0.12" aria-hidden="true"></div>
 
       <section class="hero">
-        <span class="eyebrow reveal-text">ServerFlow demo</span>
-        <h1 class="reveal-text">Modern scroll-driven storytelling for developers.</h1>
+        <span class="eyebrow reveal-text">ServerFlow motion system</span>
+        <h1 class="reveal-text">Scroll-native product storytelling with technical clarity.</h1>
         <p class="fade-up">
-          A compact GSAP demo inspired by Aiven-like motion language: clean typography, subtle parallax, and
-          scroll-linked sequencing focused on readability.
+          This enhanced demo layers split-text reveals, parallax geometry, pinned timelines, and data counters to mimic
+          modern Aiven-style motion while keeping content readable.
         </p>
+
+        <div class="hero-metrics">
+          <article class="metric fade-up">
+            <strong class="count" data-target="240">0</strong>
+            <span>deployments / day</span>
+          </article>
+          <article class="metric fade-up">
+            <strong class="count" data-target="99">0</strong>
+            <span>uptime score</span>
+          </article>
+          <article class="metric fade-up">
+            <strong class="count" data-target="32">0</strong>
+            <span>services connected</span>
+          </article>
+        </div>
       </section>
 
       <section>
         <h2 class="reveal-text">About ServerFlow</h2>
-        <p class="fade-up">
-          ServerFlow helps engineering teams design, connect, and run backend workflows visually. This sample page
-          showcases production-style motion principles with GPU-friendly transforms and opacity-based transitions.
-        </p>
+        <div class="about-layout">
+          <article class="about-panel fade-up">
+            <p>
+              ServerFlow helps platform teams design and operate backend workflows with less guesswork. Motion is used to
+              guide scanning order: first the headline, then context, then actionable units.
+            </p>
+          </article>
+          <article class="code-panel fade-up">
+            <pre><code>pipeline {
+  trigger("http.request")
+  validate("schema")
+  route("database.write")
+  observe("metrics.export")
+}</code></pre>
+          </article>
+        </div>
       </section>
 
       <section>
@@ -184,45 +376,48 @@
         <div class="features-grid">
           <article class="card fade-up">
             <h3>Readable orchestration</h3>
-            <p>Understand distributed systems with a focused, visual timeline of actions and dependencies.</p>
+            <p>Map distributed workflows with clear sequencing and reduced visual noise.</p>
           </article>
           <article class="card fade-up">
             <h3>Real-time observability</h3>
-            <p>Watch data flow through components with lightweight metrics and event-level insights.</p>
+            <p>Track request paths and behavior through lightweight event visibility.</p>
           </article>
           <article class="card fade-up">
             <h3>Safe automation</h3>
-            <p>Deploy changes with guardrails, staged execution, and predictable rollback behavior.</p>
+            <p>Ship changes with validation gates and deterministic rollback patterns.</p>
           </article>
         </div>
       </section>
 
       <section class="pinned">
         <div class="pin-frame">
-          <h2 class="reveal-text">Pinned product sequence</h2>
-          <p class="fade-up">As this section pins, each phase appears in order to demonstrate timeline choreography.</p>
-          <div class="stages">
-            <article class="stage-box">
-              <h3>1. Configure</h3>
-              <p>Define services, credentials, and event routes.</p>
-            </article>
-            <article class="stage-box">
-              <h3>2. Validate</h3>
-              <p>Run dry checks to detect conflicts before rollout.</p>
-            </article>
-            <article class="stage-box">
-              <h3>3. Ship</h3>
-              <p>Promote to production with controlled progression.</p>
-            </article>
+          <h2 class="reveal-text">Pinned execution timeline</h2>
+          <p class="fade-up">While this section is pinned, cards advance and lock in sequence to tell one clean story.</p>
+
+          <div class="pinned-track">
+            <div class="stages">
+              <article class="stage-box">
+                <h3>1. Configure</h3>
+                <p>Declare endpoints, credentials, and service mappings.</p>
+              </article>
+              <article class="stage-box">
+                <h3>2. Validate</h3>
+                <p>Run dry checks for schema, auth, and dependency integrity.</p>
+              </article>
+              <article class="stage-box">
+                <h3>3. Release</h3>
+                <p>Promote the pipeline with progressive rollout and monitoring.</p>
+              </article>
+            </div>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 class="reveal-text">Built for smooth motion</h2>
-        <p class="fade-up">
-          Every animation in this demo uses transform and opacity for performance and responsive behavior across mobile
-          and desktop breakpoints.
+        <h2 class="reveal-text">Performance-first animation</h2>
+        <p class="fade-up final-note">
+          Animations use transform and opacity to stay smooth on desktop and mobile. Reduced-motion preferences are
+          respected, and all effects trigger once or reverse cleanly when scrolling back.
         </p>
       </section>
     </main>
@@ -235,86 +430,143 @@
     <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
 
     <script>
-      gsap.registerPlugin(ScrollTrigger, SplitText);
+      gsap.registerPlugin(ScrollTrigger);
 
-      // Optional Lenis integration for smoother native-feeling scroll.
-      const lenis = new Lenis({
-        duration: 1.08,
-        smoothWheel: true,
-      });
-      lenis.on("scroll", ScrollTrigger.update);
-      gsap.ticker.add((t) => lenis.raf(t * 1000));
-      gsap.ticker.lagSmoothing(0);
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      // Text reveal: split headlines/labels into words and animate upward with stagger.
-      document.querySelectorAll(".reveal-text").forEach((el) => {
-        const split = new SplitText(el, { type: "words" });
-        gsap.from(split.words, {
-          y: 50,
-          opacity: 0,
-          duration: 0.75,
-          stagger: 0.045,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 85%",
-            toggleActions: "play none none reverse",
-          },
-        });
-      });
+      // Optional Lenis setup, guarded so the demo still runs even if the script is unavailable.
+      if (!prefersReducedMotion && window.Lenis) {
+        const lenis = new Lenis({ duration: 1.05, smoothWheel: true });
+        lenis.on("scroll", ScrollTrigger.update);
+        gsap.ticker.add((time) => lenis.raf(time * 1000));
+        gsap.ticker.lagSmoothing(0);
+      }
 
-      // Paragraphs/cards fade + slide when entering viewport.
-      gsap.utils.toArray(".fade-up").forEach((el) => {
-        gsap.from(el, {
-          y: 36,
-          opacity: 0,
-          duration: 0.85,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 86%",
-            toggleActions: "play none none reverse",
-          },
-        });
-      });
-
-      // Large geometric element: continuous rotation + subtle parallax depth.
-      gsap.to(".shape", {
-        rotate: 360,
-        duration: 30,
-        repeat: -1,
-        ease: "none",
-      });
-      gsap.to(".shape", {
-        yPercent: 20,
+      // Scroll progress indicator along the top edge.
+      gsap.to(".scroll-progress span", {
+        scaleX: 1,
         ease: "none",
         scrollTrigger: {
-          trigger: "body",
+          trigger: document.body,
           start: "top top",
           end: "bottom bottom",
-          scrub: 1,
+          scrub: true,
         },
       });
 
-      // Pinned section timeline: staged sequential reveals while section is pinned.
-      const pinTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: ".pinned",
-          start: "top top",
-          end: "+=120%",
-          pin: true,
-          scrub: 1,
-        },
-      });
+      if (!prefersReducedMotion) {
+        // SplitText word reveals for headings/eyebrow, with fallback when SplitText isn't available.
+        document.querySelectorAll(".reveal-text").forEach((el) => {
+          if (window.SplitText) {
+            const split = new SplitText(el, { type: "words" });
+            gsap.from(split.words, {
+              y: 50,
+              opacity: 0,
+              duration: 0.8,
+              stagger: 0.045,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: el,
+                start: "top 86%",
+                toggleActions: "play none none reverse",
+              },
+            });
+          } else {
+            gsap.from(el, {
+              y: 40,
+              opacity: 0,
+              duration: 0.7,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: el,
+                start: "top 86%",
+                toggleActions: "play none none reverse",
+              },
+            });
+          }
+        });
 
-      pinTl.to(".stage-box", {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 1,
-        stagger: 0.55,
-        ease: "power2.out",
-      });
+        // Shared fade-up reveal for paragraph blocks and cards.
+        gsap.utils.toArray(".fade-up").forEach((el) => {
+          gsap.from(el, {
+            y: 36,
+            opacity: 0,
+            duration: 0.85,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: el,
+              start: "top 88%",
+              toggleActions: "play none none reverse",
+            },
+          });
+        });
+
+        // Parallax + float behavior for decorative shapes.
+        gsap.utils.toArray(".parallax").forEach((el) => {
+          const speed = Number(el.dataset.speed || 0.1);
+          gsap.to(el, {
+            yPercent: speed * 120,
+            ease: "none",
+            scrollTrigger: {
+              trigger: document.body,
+              start: "top top",
+              end: "bottom bottom",
+              scrub: 1,
+            },
+          });
+        });
+
+        gsap.to(".shape", { rotate: 360, duration: 34, repeat: -1, ease: "none" });
+        gsap.to(".shape-2", { rotate: -360, duration: 42, repeat: -1, ease: "none" });
+        gsap.to(".shape-3", { rotate: 360, duration: 28, repeat: -1, ease: "none" });
+
+        // Count-up stats once when they first enter the viewport.
+        document.querySelectorAll(".count").forEach((counter) => {
+          const target = Number(counter.dataset.target || 0);
+          const state = { value: 0 };
+
+          gsap.to(state, {
+            value: target,
+            duration: 1.4,
+            ease: "power2.out",
+            onUpdate: () => {
+              counter.textContent = Math.round(state.value);
+            },
+            scrollTrigger: {
+              trigger: counter,
+              start: "top 90%",
+              once: true,
+            },
+          });
+        });
+
+        // Pinned timeline sequence with horizontal progression and staged reveals.
+        const pinTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: ".pinned",
+            start: "top top",
+            end: "+=180%",
+            pin: true,
+            scrub: 1,
+          },
+        });
+
+        pinTl
+          .to(".stages", { xPercent: -20, duration: 1 }, 0)
+          .to(
+            ".stage-box",
+            {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              duration: 1,
+              stagger: 0.45,
+              ease: "power2.out",
+            },
+            0.05,
+          )
+          .to(".stages", { xPercent: -36, duration: 1 }, 0.95);
+      }
 
       ScrollTrigger.refresh();
     </script>
