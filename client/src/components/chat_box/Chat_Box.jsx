@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form'
 import { Send } from 'lucide-react'
 import Build_Button from '../ui/Build_Button'
 
+const backendUrl = (import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8001').replace(/\/$/, '')
+
 const Chat_Box = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
@@ -44,7 +46,7 @@ const Chat_Box = () => {
 
     setIsLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8001/chat', {
+      const res = await fetch(`${backendUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: data.message }),
@@ -66,7 +68,7 @@ const Chat_Box = () => {
 
     setIsLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8001/chat', {
+      const res = await fetch(`${backendUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ master_json: masterJson }),
