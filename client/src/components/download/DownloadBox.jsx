@@ -1,6 +1,6 @@
 import styles from "./Download.module.css";
 
-const backendUrl = (import.meta.env.BACKEND_URL || 'http://127.0.0.1:8001').replace(/\/$/, '');
+const backendUrl = (import.meta.env.BACKEND_URL).replace(/\/$/, '');
 
 const DownloadBox = () => {
   return (
