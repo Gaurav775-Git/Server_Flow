@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: server-flow-mcp
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: LLM_API_KEY
+        sync: false
+      - key: MCP_URL
+        value: https://server-flow-mcp.onrender.com/sse
