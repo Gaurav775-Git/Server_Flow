@@ -2,16 +2,16 @@ import logo from '../assets/logo.png'
 
 const NavBar = () => {
   return (
-    <nav className="sticky top-0 w-full z-40 bg-[#10131a]/80 backdrop-blur-md border-b border-[#3d494d]">
-      <div className="flex justify-between items-center px-8 h-20 w-full max-w-[1280px] mx-auto">
+    <nav className="sticky top-0 w-full z-40 bg-[#000000]/80 backdrop-blur-md border-b border-[#3d494d]">
+      <div className="flex justify-between items-center px-6 lg:px-8 h-16 w-full max-w-[1200px] mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-12">
+        <div className="flex items-center gap-10">
           <a className="text-2xl font-black text-[#e1e2eb] flex items-center gap-2" href="#">
-            <span className="material-symbols-outlined text-[#4cd6fb] text-4xl"><img src={logo} className='h-10 w-10 object-contain'/></span>
+            <span className="material-symbols-outlined text-[#4cd6fb] text-3xl"><img src={logo} className='h-8 w-8 object-contain'/></span>
           </a>
           
           {/* Nav Links - Desktop */}
-          <div className="hidden lg:flex gap-8">
+          <div className="hidden lg:flex gap-7 text-sm">
             <div className="relative group cursor-pointer">
               <span className="text-[#e1e2eb] font-medium flex items-center gap-1">
                 Products 
@@ -40,19 +40,19 @@ const NavBar = () => {
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center gap-8">
-          <div className="hidden sm:flex items-center gap-6">
+        <div className="flex items-center gap-6">
+          <div className="hidden sm:flex items-center gap-5 text-sm">
             <button className="material-symbols-outlined text-[#bcc9ce] hover:text-[#e1e2eb]">
               search
             </button>
             <button className="material-symbols-outlined text-[#bcc9ce] hover:text-[#e1e2eb]">
               account_circle
             </button>
-            <button className="text-[#bcc9ce] hover:text-[#e1e2eb] font-bold">
+            <button className="text-[#bcc9ce] hover:text-[#e1e2eb] font-medium">
               Contact Sales
             </button>
           </div>
-          <a href="/dashboard" className="bg-[#4cd6fb] text-[#003642] px-6 py-2.5 rounded-full font-bold hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20">
+          <a href="/dashboard" className="bg-[#4cd6fb] text-[#003642] px-5 py-2 rounded-full font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20">
             Start Building
           </a>
         </div>

@@ -1,6 +1,6 @@
 const CTASection = () => {
   return (
-    <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#090c12] px-6 py-20">
+    <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#000000] px-6 py-20">
       {/* Decorative Braces */}
       <div className="pointer-events-none absolute inset-0 hidden md:block">
         {/* Left Brace */}

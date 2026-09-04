@@ -9,7 +9,7 @@ import CTASection from "../components/sections/home/CTASection";
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-[#05090E]">
+    <div className="min-h-screen bg-[#000000]">
       <NavBar />
 
       <HeroSection />

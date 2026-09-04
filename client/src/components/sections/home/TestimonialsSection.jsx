@@ -21,7 +21,7 @@ const testimonials = [
 
 const TestimonialsSection = () => {
   return (
-    <section className="min-h-screen w-full bg-[#0b0e14]">
+    <section className="min-h-screen w-full bg-[#000000]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col justify-center px-5 py-24">
         {/* Section Heading */}
         <div className="mb-20 text-center">
