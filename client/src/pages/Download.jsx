@@ -4,7 +4,7 @@ import DownloadBox from "../components/download/DownloadBox";
 
 const Download = () => {
   return (
-    <div className="min-h-screen bg-[#05090E]">
+    <div className="min-h-screen bg-[#000000]">
       <NavBar />
       <DownloadBox />
       <Footer />

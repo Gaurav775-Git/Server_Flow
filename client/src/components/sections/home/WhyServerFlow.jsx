@@ -81,7 +81,7 @@ const ComparisonCell = ({ title, description }) => {
 
 const WhyServerFlow = () => {
   return (
-    <section className="w-full bg-[#0d1016] px-5 py-28">
+    <section className="w-full bg-[#000000] px-5 py-28">
       <div className="mx-auto max-w-[1200px]">
         {/* Section Heading */}
         <div className="mb-20 text-center">

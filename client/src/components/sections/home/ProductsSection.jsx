@@ -38,7 +38,7 @@ const ProductsSection = () => {
   ];
 
   return (
-    <section className="bg-[#0b0e14] py-24">
+    <section className="bg-[#000000] py-24">
       
       {/* Section Heading */}
       <div className="max-w-[1100px] mx-auto px-6 text-center">

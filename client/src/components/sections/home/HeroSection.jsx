@@ -1,6 +1,6 @@
 const HeroSection = () => {
   return (
-    <section className="relative overflow-hidden bg-[#0b0e14] py-24 lg:py-28">
+    <section className="relative overflow-hidden bg-[#000000] py-24 lg:py-28">
       {/* Floating Abstract Shapes */}
       <div className="absolute top-10 right-[5%] text-[#4cd6fb]/40 select-none pointer-events-none">
         <span className="material-symbols-outlined text-[18rem] rotate-12 blur-sm">emergency</span>

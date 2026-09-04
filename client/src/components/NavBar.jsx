@@ -2,7 +2,7 @@ import logo from '../assets/logo.png'
 
 const NavBar = () => {
   return (
-    <nav className="sticky top-0 w-full z-40 bg-[#10131a]/80 backdrop-blur-md border-b border-[#3d494d]">
+    <nav className="sticky top-0 w-full z-40 bg-[#000000]/80 backdrop-blur-md border-b border-[#3d494d]">
       <div className="flex justify-between items-center px-6 lg:px-8 h-16 w-full max-w-[1200px] mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-10">
