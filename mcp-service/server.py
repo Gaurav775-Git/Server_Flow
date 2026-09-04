@@ -1246,5 +1246,4 @@ def change_file_extension(filename: str, new_extension: str) -> str:
         return f"Error: {e}"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "8000"))
-    mcp.run(transport="sse", host="0.0.0.0", port=port)
+    mcp.run(transport="stdio")
