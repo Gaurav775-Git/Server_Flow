@@ -45,15 +45,32 @@ const FlowCanvas = () => {
     setShowConfig(false);
   };
 
+  const handleConfigClose = () => {
+    setShowConfig(false);
+    setSelectedNode(null);
+  };
+
   const renderConfigForm = () => {
     if (!selectedNode) {
       return null;
     }
     if (selectedNode.data.category === "HTTP") {
-      return <HttpForm node={selectedNode} onSave={handleConfigSave} />;
+      return (
+        <HttpForm
+          node={selectedNode}
+          onSave={handleConfigSave}
+          onClose={handleConfigClose}
+        />
+      );
     }
     if (selectedNode.data.category === "DATABASE") {
-      return <DatabaseForm node={selectedNode} onSave={handleConfigSave} />;
+      return (
+        <DatabaseForm
+          node={selectedNode}
+          onSave={handleConfigSave}
+          onClose={handleConfigClose}
+        />
+      );
     }
     return null;
   };
