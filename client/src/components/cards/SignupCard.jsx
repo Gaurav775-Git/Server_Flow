@@ -1,19 +1,39 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../../utils/authApi";
 const SignupCard = () => {
+  const navigate = useNavigate();
   const [createUser, setCreateUser] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     setCreateUser({ ...createUser, [event.target.name]: event.target.value });
   };
 
-  const onSubmit = (event) => {
+  const onSubmit = async (event) => {
     event.preventDefault();
-    console.log(createUser);
+    setError("");
+    if (createUser.password !== createUser.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { confirmPassword, ...user } = createUser;
+      await registerUser(user);
+      navigate("/dashboard");
+    } catch (requestError) {
+      setError(requestError.details?.length ? requestError.details.join(" ") : requestError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   return (
     <div
@@ -130,9 +150,12 @@ const SignupCard = () => {
                 />
               </div>
 
+              {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
+
               {/* Button */}
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="flex justify-center mt-2
             w-full
             rounded-lg
@@ -148,7 +171,7 @@ const SignupCard = () => {
             active:scale-[0.98]
             cursor-pointer"
               >
-                Create Account
+                {isSubmitting ? "Creating account..." : "Create Account"}
               </button>
             </form>
           </div>

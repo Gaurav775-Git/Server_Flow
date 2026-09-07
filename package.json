@@ -1,4 +1,9 @@
 {
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix server start",
+    "server": "npm --prefix server start"
+  },
   "dependencies": {
     "express-generator": "^4.16.1"
   }
