@@ -1,4 +1,5 @@
-import React, { Children, createContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { logoutUser, verifyUser } from './authApi'
 
 const AuthContext = createContext();
 
@@ -6,32 +7,31 @@ export const AuthProvider = ({children})=>{
     const [user , setUser] = useState(null);
     const [loading , setLoading] = useState(true);
 
-    useEffect(()=>{
-        const token = localStorage.getItem('token');
-        if(token){
-            try{
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                setUser({
-                    id : payload.id,
-                    email : payload.email,
-                    name : payload.name || 'User'
-                });
+    useEffect(() => {
+        const restoreSession = async () => {
+            try {
+                const response = await verifyUser();
+                setUser(response.user);
+            } catch {
+                setUser(null);
+            } finally {
+                setLoading(false);
             }
-            catch{
-                localStorage.removeItem('token');
-            }
-        }
-        setLoading(false);
+        };
+
+        restoreSession();
     },[]);
 
-    const login = (token , userData)=>{
-        localStorage.setItem('token',token);
+    const login = (userData) => {
         setUser(userData);
     }
     
-    const logout = ()=>{
-        localStorage.removeItem('token');
-        setUser(null);
+    const logout = async () => {
+        try {
+            await logoutUser();
+        } finally {
+            setUser(null);
+        }
     }
 
     return (

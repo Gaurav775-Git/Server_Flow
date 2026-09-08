@@ -31,3 +31,10 @@ export const loginUser = (credentials) =>
     method: "POST",
     body: JSON.stringify(credentials),
   });
+
+export const verifyUser = () => request("/auth/verify");
+
+export const logoutUser = () =>
+  request("/auth/logout", {
+    method: "POST",
+  });

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../../utils/authApi";
+import { useAuth } from "../../utils/AuthContext";
 
 const LoginCard = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -20,7 +22,8 @@ const LoginCard = () => {
     setError("");
     setIsSubmitting(true);
     try {
-      await loginUser(formData);
+      const response = await loginUser(formData);
+      login(response.user);
       navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.message);

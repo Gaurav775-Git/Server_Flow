@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../../utils/authApi";
+import { useAuth } from "../../utils/AuthContext";
 const SignupCard = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [createUser, setCreateUser] = useState({
     name: "",
     email: "",
@@ -27,7 +29,8 @@ const SignupCard = () => {
     setIsSubmitting(true);
     try {
       const { confirmPassword, ...user } = createUser;
-      await registerUser(user);
+      const response = await registerUser(user);
+      login(response.user);
       navigate("/dashboard");
     } catch (requestError) {
       setError(requestError.details?.length ? requestError.details.join(" ") : requestError.message);
