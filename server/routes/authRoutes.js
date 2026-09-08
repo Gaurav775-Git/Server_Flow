@@ -7,6 +7,7 @@ const { verifyToken } = require("../middlewares/authMiddleware");
 const { success } = require("zod");
 
 router.post("/register", register);
+router.post("/signup", register);
 router.post("/login", login);
 router.get("/verify", verifyToken, (req, res) => {
   res.json({

@@ -1,18 +1,32 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { loginUser } from "../../utils/authApi";
 
 const LoginCard = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData);
+    setError("");
+    setIsSubmitting(true);
+    try {
+      await loginUser(formData);
+      navigate("/dashboard");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -75,9 +89,11 @@ const LoginCard = () => {
                 className="w-full min-h-11 rounded-lg bg-[#05090E] border border-[#242930] px-3 text-base placeholder:text-[#374146] outline-none focus:ring-2 focus:ring-[#22B8DD]/40 focus:border-[#22B8DD]"
               />
             </div>
+            {error && <p className="text-sm text-red-300" role="alert">{error}</p>}
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="flex justify-center items-center mt-2 min-h-11
                   w-full
                   rounded-lg
@@ -91,7 +107,7 @@ const LoginCard = () => {
                   hover:shadow-[0_0_20px_rgba(34,184,221,0.35)]
                   active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#22B8DD]/40 focus:ring-offset-2 focus:ring-offset-[#161D27] cursor-pointer"
             >
-              Login
+              {isSubmitting ? "Signing in..." : "Login"}
             </button>
           </form>
         </div>

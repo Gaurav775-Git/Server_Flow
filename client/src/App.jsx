@@ -20,6 +20,7 @@ const App = () => {
         <Route path="/playground/download" element={<Download />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/register" element={<Signup />} />
       </Routes>
     </Router>
