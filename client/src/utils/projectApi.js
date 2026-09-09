@@ -1,5 +1,5 @@
 const projectApiUrl = (
-  import.meta.env.VITE_PROJECT_API_URL || "http://localhost:3000/api/project"
+  import.meta.env.VITE_SERVER_API_URL || "http://localhost:3000/api/project"
 ).replace(/\/$/, "");
 
 const request = async (path, options = {}) => {
