@@ -1,5 +1,5 @@
 const projectApiUrl = (
-  import.meta.env.SERVER_URL
+  import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
 ).replace(/\/$/, "");
 
 const request = async (path, options = {}) => {
