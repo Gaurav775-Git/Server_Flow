@@ -8,6 +8,7 @@ var { query } = require("./config/db"); //   Correct import
 var userRoutes = require("./routes/userRoute");
 var indexRouter = require("./routes/index");
 var authRoutes = require("./routes/authRoutes");
+var projectRoutes = require("./routes/projectRoute");
 
 var app = express();
 var allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
@@ -25,6 +26,7 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/", indexRouter);
 app.use("/api/auth", authRoutes);
+app.use("/api/project", projectRoutes);
 // app.use("/api/users", userRoutes);
 
 //   FIXED: Test route
