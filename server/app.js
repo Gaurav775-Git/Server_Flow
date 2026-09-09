@@ -11,7 +11,7 @@ var authRoutes = require("./routes/authRoutes");
 var projectRoutes = require("./routes/projectRoute");
 
 var app = express();
-var allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+var allowedOrigin = process.env.CORS_ORIGIN;
 
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
