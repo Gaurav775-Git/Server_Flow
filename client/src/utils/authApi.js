@@ -23,20 +23,20 @@ const request = async (path, options = {}) => {
 };
 
 export const registerUser = (user) =>
-  request("/auth/register", {
+  request("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(user),
   });
 
 export const loginUser = (credentials) =>
-  request("/auth/login", {
+  request("/api/auth/login", {
     method: "POST",
     body: JSON.stringify(credentials),
   });
 
-export const verifyUser = () => request("/auth/verify");
+export const verifyUser = () => request("/api/auth/verify");
 
 export const logoutUser = () =>
-  request("/auth/logout", {
+  request("/api/auth/logout", {
     method: "POST",
   });

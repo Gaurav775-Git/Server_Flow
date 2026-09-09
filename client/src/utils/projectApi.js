@@ -1,6 +1,6 @@
 const projectApiUrl = (
   import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
-).replace(/\/$/, "");
+).replace(/\/$/, "") + "/api/project";
 
 const request = async (path, options = {}) => {
   const response = await fetch(`${projectApiUrl}${path}`, {
