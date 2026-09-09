@@ -1,6 +1,5 @@
 const apiBaseUrl = (
-  import.meta.env.VITE_AUTH_API_URL ||
-  import.meta.env.VITE_API_URL
+  import.meta.env.VITE_SERVER_API_URL
 ).replace(/\/$/, "");
 
 const request = async (path, options = {}) => {
