@@ -6,13 +6,22 @@ import Footer from "../components/Footer";
 
 const Signup = () => {
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-[#e1e2eb]">
+    <div className="min-h-screen bg-[black] text-[#e1e2eb] overflow-x-hidden flex flex-col">
       <NavBar />
-      <div className="min-h-screen relative flex justify-center items-center bg-[#10131A]">
-        <LoginLeftIcon />
-        <SignupCard />
-        <LoginRightIcon />
+      <main className="relative flex-1 flex items-center justify-center bg-[#10131A] px-4 py-8 sm:py-12 lg:py-16 overflow-hidden">
+        {/* Background icons - hidden on mobile */}
+        <div className="hidden sm:block">
+          <LoginLeftIcon />
+        </div>
+        
+        <div className="w-full max-w-sm mx-auto z-10">
+          <SignupCard />
+        </div>
+        
+        <div className="hidden sm:block">
+          <LoginRightIcon />
       </div>
+      </main>
       <Footer />
     </div>
   );
