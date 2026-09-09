@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react'
+import ProjectCard from './cards/ProjectCard'
+import { getProjects } from '../utils/projectApi'
 
 const DashboardContent = () => {
-const [project , setProject] = useState([]);
+const [projects, setProjects] = useState([]);
 const [loading , setLoading] = useState(true);
 const [error , setError] = useState('');
 
 useEffect(()=>{
   const fetchProject = async()=>{
     try{
-      const data = await getproject();
-      setProject(data);
+      const response = await getProjects();
+      setProjects(response.data || []);
     }
     catch(err){
-      console.log(error);
+      setError(err.message);
     }
     finally{
       setLoading(false);
@@ -28,6 +30,14 @@ if (loading) {
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00d4ff]" />
       </div>
+    </main>
+  );
+}
+
+if (error) {
+  return (
+    <main className="flex-1 py-6 md:pl-6 min-h-screen">
+      <p className="mt-8 rounded-lg border border-red-500/30 p-8 text-center text-red-400">{error}</p>
     </main>
   );
 }
