@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Send } from 'lucide-react'
 import Build_Button from '../ui/Build_Button'
 
-const backendUrl = (import.meta.env.VITE_MCP_URL || "http://localhost:8000").replace(/\/$/, '')
+const backendUrl = (import.meta.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, '')
 
 const Chat_Box = () => {
   const [isExpanded, setIsExpanded] = useState(false)
