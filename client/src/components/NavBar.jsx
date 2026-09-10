@@ -59,9 +59,12 @@ const NavBar = () => {
             <button className="material-symbols-outlined text-[#bcc9ce] hover:text-[#e1e2eb]">
               account_circle
             </button>
-            <button className="text-[#bcc9ce] hover:text-[#e1e2eb] font-medium">
-              Contact Sales
-            </button>
+            <a
+              href="/login"
+              className="text-[#bcc9ce] hover:text-[#e1e2eb] font-medium transition-colors"
+            >
+              Login
+            </a>
           </div>
           <a
             href="/dashboard"
