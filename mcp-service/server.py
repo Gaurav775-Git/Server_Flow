@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import shutil
 import hashlib
@@ -155,7 +156,7 @@ Generate ONLY the JavaScript code for a complete `app.js` file (no extra text or
         return code, "LLM"
     except Exception as e:
         error_msg = f"LLM error: {str(e)}"
-        print(f"[generate_code_with_llm] {error_msg}")
+        sys.stderr.write(f"[generate_code_with_llm] {error_msg}\n")
         return None, error_msg
 
 
