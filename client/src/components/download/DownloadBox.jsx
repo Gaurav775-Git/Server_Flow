@@ -1,6 +1,8 @@
 import styles from "./Download.module.css";
 
-const backendUrl = ("https://server-flow-3.onrender.com").replace(/\/$/, '')
+const backendUrl = (
+  import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_SERVER_URL || 'http://localhost:8001'
+).replace(/\/$/, '')
 
 const DownloadBox = () => {
   return (

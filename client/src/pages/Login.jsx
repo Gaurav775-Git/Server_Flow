@@ -3,16 +3,24 @@ import LoginLeftIcon from "../components/ui/LoginLeftIcon";
 import LoginRightIcon from "../components/ui/LoginRightIcon";
 import NavBar from "../components/NavBar";
 import Footer from "../components/Footer";
+
 const Login = () => {
   return (
-    <div className="min-h-screen bg-[#0b0e14] text-[#e1e2eb] overflow-x-hidden">
+    <div className="min-h-screen bg-[black] text-[#e1e2eb] overflow-x-hidden flex flex-col">
       <NavBar />
-      <main className="relative flex items-center justify-center bg-[#10131A] px-4 py-12 sm:px-6 lg:px-8">
-        <LoginLeftIcon />
-        <div className="w-full max-w-md sm:max-w-lg">
+      <main className="relative flex-1 flex items-center justify-center bg-[#10131A] px-4 py-8 sm:py-12 lg:py-16 overflow-hidden">
+        {/* Background icons - hidden on mobile */}
+        <div className="hidden sm:block">
+          <LoginLeftIcon />
+        </div>
+        
+        <div className="w-full max-w-md sm:max-w-lg mx-auto z-10">
           <LoginCard />
         </div>
-        <LoginRightIcon />
+        
+        <div className="hidden sm:block">
+          <LoginRightIcon />
+        </div>
       </main>
       <Footer />
     </div>

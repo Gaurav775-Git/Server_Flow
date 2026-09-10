@@ -1,159 +1,190 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../../utils/authApi";
+import { useAuth } from "../../utils/AuthContext";
+import { User, Mail, Lock, KeyRound, Sparkles , UserPlus } from "lucide-react";
+
 const SignupCard = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [createUser, setCreateUser] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event) => {
     setCreateUser({ ...createUser, [event.target.name]: event.target.value });
   };
 
-  const onSubmit = (event) => {
+  const onSubmit = async (event) => {
     event.preventDefault();
-    console.log(createUser);
+    setError("");
+    if (createUser.password !== createUser.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { confirmPassword, ...user } = createUser;
+      const response = await registerUser(user);
+      login(response.user);
+      navigate("/dashboard");
+    } catch (requestError) {
+      setError(requestError.details?.length ? requestError.details.join(" ") : requestError.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
   return (
-    <div
-      className="w-full max-w-110 h-162 bg-[#161D27]/90 z-20 rounded-3xl backdrop-blur-xl relative
-  border border-cyan-400/10 shadow-[0_30px_70px_rgba(0,0,0,0.55),0_0_25px_rgba(34,211,238,0.08)]
-  text-white text-2xl"
-    >
+    <div className="w-full max-w-sm mx-auto bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8 shadow-2xl shadow-black/50">
       {/* Logo */}
-      <div className="flex justify-center absolute top-16 left-48 z-10">
-        <svg
-          width="50"
-          height="34"
-          viewBox="0 0 80 64"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M8 64C5.8 64 3.91667 63.2167 2.35 61.65C0.783333 60.0833 0 58.2 0 56V8C0 5.8 0.783333 3.91667 2.35 2.35C3.91667 0.783333 5.8 0 8 0H72C74.2 0 76.0833 0.783333 77.65 2.35C79.2167 3.91667 80 5.8 80 8V56C80 58.2 79.2167 60.0833 77.65 61.65C76.0833 63.2167 74.2 64 72 64H8ZM8 56H72V16H8V56ZM22 52L16.4 46.4L26.7 36L16.3 25.6L22 20L38 36L22 52ZM40 52V44H64V52H40Z"
-            fill="#4CD6FB"
-          />
-        </svg>
+      {/* <div className="flex justify-center mb-6">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4ff] to-[#0088cc] flex items-center justify-center shadow-lg shadow-[#00d4ff]/20">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 80 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 64C5.8 64 3.91667 63.2167 2.35 61.65C0.783333 60.0833 0 58.2 0 56V8C0 5.8 0.783333 3.91667 2.35 2.35C3.91667 0.783333 5.8 0 8 0H72C74.2 0 76.0833 0.783333 77.65 2.35C79.2167 3.91667 80 5.8 80 8V56C80 58.2 79.2167 60.0833 77.65 61.65C76.0833 63.2167 74.2 64 72 64H8ZM8 56H72V16H8V56ZM22 52L16.4 46.4L26.7 36L16.3 25.6L22 20L38 36L22 52ZM40 52V44H64V52H40Z"
+              fill="white"
+            />
+          </svg>
+        </div>
+      </div> */}
+
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-semibold text-white tracking-tight">
+          Create account
+        </h2>
+        <p className="text-sm text-white/40 mt-1">
+          Start building your backends instantly
+        </p>
       </div>
 
-      <div>
-        <div className="flex flex-col items-center w-full absolute top-24 px-6 py-4">
-          {/* Heading */}
-          <h2 className="mb-6 text-3xl font-bold tracking-wide">
-            Create Account
-          </h2>
-
-          <div className="form-box flex flex-col items-center rounded-3xl w-full p-4">
-            <form className="flex flex-col gap-4 w-full" onSubmit={onSubmit}>
-              {/* Name */}
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="name"
-                  className="block text-[13px] font-medium text-[#B6C3C8]"
-                >
-                  Full Name
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Jhon Smith"
-                  id="name"
-                  name="name"
-                  onChange={handleChange}
-                  value={createUser.name}
-                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
-              placeholder:text-[#374146] outline-none"
-                />
-              </div>
-
-              {/* Email */}
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="email"
-                  className="block text-[13px] font-medium text-[#B6C3C8]"
-                >
-                  Email Address
-                </label>
-
-                <input
-                  type="email"
-                  placeholder="name@company.com"
-                  id="email"
-                  name="email"
-                  onChange={handleChange}
-                  value={createUser.email}
-                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
-              placeholder:text-[#374146] outline-none"
-                />
-              </div>
-
-              {/* Password */}
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="password"
-                  className="block text-[13px] font-medium text-[#B6C3C8]"
-                >
-                  Password
-                </label>
-
-                <input
-                  type="password"
-                  placeholder="Create a new password"
-                  id="password"
-                  name="password"
-                  onChange={handleChange}
-                  value={createUser.password}
-                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
-              placeholder:text-[#374146] outline-none"
-                />
-              </div>
-
-              {/* Confirm Password */}
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-[13px] font-medium text-[#B6C3C8]"
-                >
-                  Confirm Password
-                </label>
-
-                <input
-                  type="password"
-                  placeholder="Confirm your password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  onChange={handleChange}
-                  value={createUser.confirmPassword}
-                  className="w-full bg-[#05090E] border border-[#242930] px-3 py-3 text-base
-              placeholder:text-[#374146] outline-none"
-                />
-              </div>
-
-              {/* Button */}
-              <button
-                type="submit"
-                className="flex justify-center mt-2
-            w-full
-            rounded-lg
-            bg-[#22B8DD]
-            py-3
-            text-lg
-            font-medium
-            text-[#05090E]
-            transition-all
-            duration-300
-            hover:bg-[#2CC6EB]
-            hover:shadow-[0_0_20px_rgba(34,184,221,0.35)]
-            active:scale-[0.98]
-            cursor-pointer"
-              >
-                Create Account
-              </button>
-            </form>
+      {/* Form */}
+      <form onSubmit={onSubmit} className="space-y-3.5">
+        {/* Name */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-white/60 tracking-wide">
+            Full Name
+          </label>
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="text"
+              placeholder="John Doe"
+              name="name"
+              value={createUser.name}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff]/30 transition-all"
+              required
+            />
           </div>
         </div>
-      </div>
+
+        {/* Email */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-white/60 tracking-wide">
+            Email Address
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="email"
+              placeholder="name@company.com"
+              name="email"
+              value={createUser.email}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff]/30 transition-all"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Password */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-white/60 tracking-wide">
+            Password
+          </label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="password"
+              placeholder="Create a new password"
+              name="password"
+              value={createUser.password}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff]/30 transition-all"
+              required
+              minLength={6}
+            />
+          </div>
+        </div>
+
+        {/* Confirm Password */}
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-white/60 tracking-wide">
+            Confirm Password
+          </label>
+          <div className="relative">
+            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="password"
+              placeholder="Confirm your password"
+              name="confirmPassword"
+              value={createUser.confirmPassword}
+              onChange={handleChange}
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/20 outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff]/30 transition-all"
+              required
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="group relative w-full py-2.5 rounded-xl bg-white text-black font-medium text-sm hover:bg-white/90 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+        >
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-black/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+          {isSubmitting ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Creating account...
+            </span>
+          ) : (
+            <span className="flex items-center justify-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              Create Account
+            </span>
+          )}
+        </button>
+
+        <p className="text-center text-sm text-white/30 mt-2">
+          Already have an account?{" "}
+          <a href="/login" className="text-white hover:text-[#00d4ff] transition-colors">
+            Sign in
+          </a>
+        </p>
+      </form>
     </div>
   );
 };
