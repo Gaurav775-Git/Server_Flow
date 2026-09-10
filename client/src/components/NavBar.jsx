@@ -1,4 +1,4 @@
-import logo from '../assets/logo.png'
+import logo from "../assets/logo.png";
 
 const NavBar = () => {
   return (
@@ -6,34 +6,45 @@ const NavBar = () => {
       <div className="flex justify-between items-center px-6 lg:px-8 h-16 w-full max-w-[1200px] mx-auto">
         {/* Logo */}
         <div className="flex items-center gap-10">
-          <a className="text-2xl font-black text-[#e1e2eb] flex items-center gap-2" href="#">
-            <span className="material-symbols-outlined text-[#4cd6fb] text-3xl"><img src={logo} className='h-8 w-8 object-contain'/></span>
+          <a
+            className="text-2xl font-black text-[#e1e2eb] flex items-center gap-2"
+            href="#"
+          >
+            <span className="material-symbols-outlined text-[#4cd6fb] text-3xl">
+              <img src={logo} className="h-8 w-8 object-contain" />
+            </span>
           </a>
-          
+
           {/* Nav Links - Desktop */}
           <div className="hidden lg:flex gap-7 text-sm">
-            <div className="relative group cursor-pointer">
-              <span className="text-[#e1e2eb] font-medium flex items-center gap-1">
-                Products 
-                <span className="material-symbols-outlined text-sm">expand_more</span>
-              </span>
-            </div>
-            <div className="relative group cursor-pointer">
-              <span className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors flex items-center gap-1">
-                Solutions 
-                <span className="material-symbols-outlined text-sm">expand_more</span>
-              </span>
-            </div>
-            <div className="relative group cursor-pointer">
-              <span className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors flex items-center gap-1">
-                Developers 
-                <span className="material-symbols-outlined text-sm">expand_more</span>
-              </span>
-            </div>
-            <a className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors" href="#">
+            <a
+              href="#products"
+              className="text-[#e1e2eb] font-medium hover:text-[#e1e2eb] transition-colors"
+            >
+              Products
+            </a>
+            <a
+              href="#platform"
+              className="text-[#e1e2eb] font-medium hover:text-[#e1e2eb] transition-colors"
+            >
+              Platform
+            </a>
+            <a
+              href="#whyServerFlow"
+              className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors"
+            >
+              Why Server Flow
+            </a>
+            <a
+              className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors"
+              href="#"
+            >
               Pricing
             </a>
-            <a className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors" href="#">
+            <a
+              className="text-[#bcc9ce] hover:text-[#e1e2eb] transition-colors"
+              href="#"
+            >
               Docs
             </a>
           </div>
@@ -52,7 +63,10 @@ const NavBar = () => {
               Contact Sales
             </button>
           </div>
-          <a href="/dashboard" className="bg-[#4cd6fb] text-[#003642] px-5 py-2 rounded-full font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20">
+          <a
+            href="/dashboard"
+            className="bg-[#4cd6fb] text-[#003642] px-5 py-2 rounded-full font-bold text-sm hover:brightness-110 transition-all shadow-lg shadow-[#4cd6fb]/20"
+          >
             Start Building
           </a>
         </div>
