@@ -15,7 +15,6 @@ const PlatformContent = () => {
 
       {/* Feature List */}
       <div className="mt-8 space-y-7">
-
         <PlatformFeatureItem
           title="Design backend flows visually"
           description="Drag, drop, connect, and generate working server code automatically with enterprise precision."
@@ -30,13 +29,15 @@ const PlatformContent = () => {
           title="Full cloud control"
           description="Deploy directly to your cloud account with full control over data residency, compliance, and VPC."
         />
-
       </div>
 
       {/* CTA Button */}
-      <button className="mt-10 rounded-lg border border-cyan-400 px-6 py-3 text-xs font-bold tracking-wider text-cyan-400 transition hover:bg-cyan-400 hover:text-black">
+      <a
+        href="/dashboard"
+        className="mt-10 inline-block rounded-lg border border-cyan-400 px-6 py-3 text-xs font-bold tracking-wider text-cyan-400 transition hover:bg-cyan-400 hover:text-black"
+      >
         EXPLORE THE PLATFORM
-      </button>
+      </a>
     </div>
   );
 };
