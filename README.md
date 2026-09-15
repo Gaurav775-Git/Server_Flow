@@ -212,8 +212,16 @@ Contributions are what make the open-source community amazing! Please follow the
 <br/>
 <a href="https://github.com/Gaurav775-Git">🔗 @Gaurav775-Git</a>
 </td>
-
-
+  
+<!-- Add here -->
+<!-- <td align="center">
+<a href="https://github.com/Gaurav775-Git">
+<img src="https://github.com/Gaurav775-Git.png" width="100px;" style="border-radius:50%"/><br/>
+<sub><b>Gaurav</b></sub>
+</a>
+<br/>
+<a href="https://github.com/Gaurav775-Git">🔗 @Gaurav775-Git</a>
+</td> -->
 
 </tr>
 </table>
