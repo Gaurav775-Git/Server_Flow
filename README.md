@@ -198,35 +198,6 @@ Contributions are what make the open-source community amazing! Please follow the
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
-## 👥 Team
-
-<div align="center">
-
-<table>
-<tr>
-<td align="center">
-<a href="https://github.com/Gaurav775-Git">
-<img src="https://github.com/Gaurav775-Git.png" width="100px;" style="border-radius:50%"/><br/>
-<sub><b>Gaurav</b></sub>
-</a>
-<br/>
-<a href="https://github.com/Gaurav775-Git">🔗 @Gaurav775-Git</a>
-</td>
-  
-<!-- Add here -->
-<!-- <td align="center">
-<a href="https://github.com/Gaurav775-Git">
-<img src="https://github.com/Gaurav775-Git.png" width="100px;" style="border-radius:50%"/><br/>
-<sub><b>Gaurav</b></sub>
-</a>
-<br/>
-<a href="https://github.com/Gaurav775-Git">🔗 @Gaurav775-Git</a>
-</td> -->
-
-</tr>
-</table>
-
-</div>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:8E2DE2,100:36BCF7&height=120&section=footer"/>
 
