@@ -93,8 +93,8 @@ const CTASection = () => {
         </h2>
 
         {/* CTA Button */}
-        <button
-          type="button"
+        <a
+          href="/dashboard"
           className="
             mt-12
             rounded-lg
@@ -112,7 +112,7 @@ const CTASection = () => {
           "
         >
           Get building for free
-        </button>
+        </a>
 
         {/* Supporting Text */}
         <p className="mt-7 text-[8px] font-medium uppercase tracking-[0.35em] text-[#525761] sm:text-[9px]">
