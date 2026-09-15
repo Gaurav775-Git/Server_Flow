@@ -29,10 +29,7 @@ const HeroSection = () => {
             Server Flow's 99.9% reliability.
           </p>
           <div className="flex flex-wrap gap-3">
-            <a
-              href="/dashboard"
-              className="bg-[#a9d63e] text-[#263500] px-7 py-3 rounded-full font-bold text-sm hover:shadow-[0_0_40px_rgba(169,214,62,0.3)] transition-all"
-            >
+            <a href="/dashboard" className="bg-[#a9d63e] text-[#263500] px-7 py-3 rounded-full font-bold text-sm hover:shadow-[0_0_40px_rgba(169,214,62,0.3)] transition-all">
               Start building
             </a>
             <button className="border border-[#3d494d] text-[#e1e2eb] px-7 py-3 rounded-full font-bold text-sm hover:bg-[#272a31] transition-all">

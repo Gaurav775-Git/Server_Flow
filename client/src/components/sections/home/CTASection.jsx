@@ -95,21 +95,23 @@ const CTASection = () => {
         {/* CTA Button */}
         <a
           href="/dashboard"
-          className="mt-12 inline-block rounded-lg
-    bg-[#a8df32]
-    px-10
-    py-3.5
-    text-sm
-    font-bold
-    text-[#10140a]
-    shadow-[0_0_35px_rgba(168,223,50,0.28)]
-    transition-all
-    duration-300
-    hover:scale-105
-    hover:shadow-[0_0_45px_rgba(168,223,50,0.45)]
-  "
+          className="
+            mt-12
+            rounded-lg
+            bg-[#a8df32]
+            px-10
+            py-3.5
+            text-sm
+            font-bold
+            text-[#10140a]
+            shadow-[0_0_35px_rgba(168,223,50,0.28)]
+            transition-all
+            duration-300
+            hover:scale-105
+            hover:shadow-[0_0_45px_rgba(168,223,50,0.45)]
+          "
         >
-          Start building for free
+          Get building for free
         </a>
 
         {/* Supporting Text */}
