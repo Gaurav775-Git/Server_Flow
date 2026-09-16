@@ -1,8 +1,6 @@
 import json
 import shutil
 import os
-import sys
-import traceback
 from datetime import datetime
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -98,93 +96,89 @@ async def download_project(background_tasks: BackgroundTasks):
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        return await handle_chat(req)
-    except Exception as e:
-        traceback.print_exc()
-        return {"reply": f"Error in chat processing: {str(e)}"}
+        server_params = StdioServerParameters(
+            command="python",
+            args=["server.py"]
+        )
 
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
 
-async def handle_chat(req: ChatRequest):
-    server_params = StdioServerParameters(
-        command=sys.executable,
-        args=["server.py"]
-    )
+                mcp_tools = (await session.list_tools()).tools
+                tools = [{"type": "function", "function": {
+                            "name": t.name, "description": t.description, "parameters": t.inputSchema}}
+                          for t in mcp_tools]
 
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-
-            mcp_tools = (await session.list_tools()).tools
-            tools = [{"type": "function", "function": {
-                        "name": t.name, "description": t.description, "parameters": t.inputSchema}}
-                      for t in mcp_tools]
-
-            system = {"role": "system", "content": """You are a Server Flow assistant.
+                system = {"role": "system", "content": """You are a Server Flow assistant. 
 Always use MCP tools before answering. Use project_files for file work. 
 React Flow HTTP nodes are API routes, DATABASE nodes are data-store notes, and AUTH nodes are authentication notes. 
 Keep replies short and helpful."""}
 
-            if req.master_json is not None:
-                project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                if req.master_json is not None:
+                    project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+                    try:
+                        validation_result = await session.call_tool(
+                            "validate_flow", {"flow": req.master_json}
+                        )
+                        if validation_result.isError:
+                            error_msg = validation_result.content[0].text
+                            return {"reply": f"Flow validation failed: {error_msg}"}
+
+                        result = await session.call_tool(
+                            "generate_server_from_flow",
+                            {"flow": req.master_json, "project_name": project_name}
+                        )
+                        outcome = result.content[0].text
+
+                        if result.isError:
+                            return {"reply": f"Build error: {outcome}"}
+
+                        return {"reply": outcome}
+
+                    except Exception as e:
+                        return {"reply": f"Error processing workflow: {str(e)}"}
 
                 try:
-                    validation_result = await session.call_tool(
-                        "validate_flow", {"flow": req.master_json}
-                    )
-                    if validation_result.isError:
-                        error_msg = validation_result.content[0].text
-                        return {"reply": f"Flow validation failed: {error_msg}"}
-
-                    result = await session.call_tool(
-                        "generate_server_from_flow",
-                        {"flow": req.master_json, "project_name": project_name}
-                    )
-                    outcome = result.content[0].text
-
-                    if result.isError:
-                        return {"reply": f"Build error: {outcome}"}
-
-                    return {"reply": outcome}
-
+                    project_state = await session.call_tool("project_files", {"action": "list"})
+                    state_text = project_state.content[0].text
                 except Exception as e:
-                    return {"reply": f"Error processing workflow: {str(e)}"}
+                    state_text = f"Error reading project: {str(e)}"
 
-            try:
-                project_state = await session.call_tool("project_files", {"action": "list"})
-                state_text = project_state.content[0].text
-            except Exception as e:
-                state_text = f"Error reading project: {str(e)}"
+                history = [
+                    system,
+                    {"role": "system", "content": f"MCP project file list: {state_text}"},
+                    {"role": "user", "content": req.message}
+                ]
 
-            history = [
-                system,
-                {"role": "system", "content": f"MCP project file list: {state_text}"},
-                {"role": "user", "content": req.message}
-            ]
+                while True:
+                    msg = ask_llm(history, tools)
 
-            while True:
-                msg = ask_llm(history, tools)
+                    if msg.get("tool_calls"):
+                        history.append(msg)
+                        for call in msg["tool_calls"]:
+                            try:
+                                args = json.loads(call["function"]["arguments"])
+                                result = await session.call_tool(call["function"]["name"], args)
+                                history.append({
+                                    "role": "tool",
+                                    "tool_call_id": call["id"],
+                                    "content": result.content[0].text
+                                })
+                            except Exception as e:
+                                history.append({
+                                    "role": "tool",
+                                    "tool_call_id": call["id"],
+                                    "content": f"Error: {str(e)}"
+                                })
+                        continue
 
-                if msg.get("tool_calls"):
-                    history.append(msg)
-                    for call in msg["tool_calls"]:
-                        try:
-                            args = json.loads(call["function"]["arguments"])
-                            result = await session.call_tool(call["function"]["name"], args)
-                            history.append({
-                                "role": "tool",
-                                "tool_call_id": call["id"],
-                                "content": result.content[0].text
-                            })
-                        except Exception as e:
-                            history.append({
-                                "role": "tool",
-                                "tool_call_id": call["id"],
-                                "content": f"Error: {str(e)}"
-                            })
-                    continue
+                    history.append({"role": "assistant", "content": msg["content"]})
+                    return {"reply": msg["content"]}
 
-                history.append({"role": "assistant", "content": msg["content"]})
-                return {"reply": msg["content"]}
+    except Exception as e:
+        return {"reply": f"Error in chat processing: {str(e)}"}
 
 
 if __name__ == "__main__":
