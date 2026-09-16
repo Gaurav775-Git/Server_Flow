@@ -1,36 +1,36 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:36BCF7,100:8E2DE2&height=220&section=header&text=Server%20Flow&fontSize=60&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=A%20Visual%20Backend%20Generator&descAlignY=55&descSize=18" width="100%"/>
-
-<img src="https://github.com/user-attachments/assets/d033718f-27ad-4b11-92d3-15753b7fb2a2" alt="Server Flow Logo" width="110" height="110"  />
-
-
+<img src="https://github.com/user-attachments/assets/d033718f-27ad-4b11-92d3-15753b7fb2a2" alt="Server Flow Logo" width="120" height="120" />
 
 <br/>
 
-[![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=26&duration=2500&pause=800&color=36BCF7&center=true&vCenter=true&width=550&lines=Design+Visually.;Generate+Instantly.;Deploy+Confidently.;Stop+Writing+Boilerplate.)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=26&duration=2200&pause=700&color=36BCF7&center=true&vCenter=true&width=600&lines=Drag.+Connect.+Deploy.;No+More+Boilerplate.;Design+Visually.+Generate+Instantly.;From+Flowchart+to+Production+API.)](https://git.io/typing-svg)
 
 <br/>
 
-![Stars](https://img.shields.io/github/stars/Gaurav775-Git/Server_Flow?style=for-the-badge&color=36BCF7&labelColor=1a1a2e)
-![Forks](https://img.shields.io/github/forks/Gaurav775-Git/Server_Flow?style=for-the-badge&color=8E2DE2&labelColor=1a1a2e)
-![Issues](https://img.shields.io/github/issues/Gaurav775-Git/Server_Flow?style=for-the-badge&color=F7B733&labelColor=1a1a2e)
-![License](https://img.shields.io/badge/License-MIT-4EA94B?style=for-the-badge&labelColor=1a1a2e)
+<p align="center">
+  <img src="https://img.shields.io/github/stars/Gaurav775-Git/Server_Flow?style=for-the-badge&color=36BCF7&labelColor=0d1117&logo=github" />
+  <img src="https://img.shields.io/github/forks/Gaurav775-Git/Server_Flow?style=for-the-badge&color=8E2DE2&labelColor=0d1117&logo=git" />
+  <img src="https://img.shields.io/github/issues/Gaurav775-Git/Server_Flow?style=for-the-badge&color=F7B733&labelColor=0d1117&logo=git-extensions" />
+  <img src="https://img.shields.io/badge/License-MIT-4EA94B?style=for-the-badge&labelColor=0d1117" />
+  <img src="https://img.shields.io/badge/PRs-Welcome-FF6B6B?style=for-the-badge&labelColor=0d1117&logo=github" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+  <img src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" />
+  <img src="https://img.shields.io/badge/Express.js-404D59?style=for-the-badge&logo=express&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" />
+</p>
 
 <br/>
 
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
-![Express.js](https://img.shields.io/badge/Express.js-404D59?style=for-the-badge&logo=express&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-
-<br/>
-
-<a href="#-installation"><img src="https://img.shields.io/badge/Get%20Started-36BCF7?style=for-the-badge&logoColor=white&logo=rocket" /></a>
-<a href="#-contributing"><img src="https://img.shields.io/badge/Contribute-8E2DE2?style=for-the-badge&logoColor=white&logo=git" /></a>
-<a href="https://github.com/Gaurav775-Git/Server_Flow/issues"><img src="https://img.shields.io/badge/Report%20Bug-F7B733?style=for-the-badge&logoColor=white&logo=bugatti" /></a>
+<a href="#-installation--running-the-project"><img src="https://img.shields.io/badge/🚀_Get%20Started-36BCF7?style=for-the-badge&logoColor=white" /></a>
+<a href="#-contributing"><img src="https://img.shields.io/badge/🤝_Contribute-8E2DE2?style=for-the-badge&logoColor=white" /></a>
+<a href="https://github.com/Gaurav775-Git/Server_Flow/issues"><img src="https://img.shields.io/badge/🐛_Report%20Bug-F7B733?style=for-the-badge&logoColor=white" /></a>
+<a href="#-roadmap"><img src="https://img.shields.io/badge/🗺️_Roadmap-4EA94B?style=for-the-badge&logoColor=white" /></a>
 
 </div>
 
@@ -38,13 +38,38 @@
 
 ## 📖 Overview
 
-**Server Flow** is a platform that lets you visually design backend workflows — much like *n8n* — and automatically generates production-ready server code.
+**Server Flow** turns backend architecture into a visual, drag-and-drop experience — think *n8n* meets *code generation*. Instead of hand-writing routes, controllers, and boilerplate, you design the flow of your API on a canvas, and Server Flow compiles it into clean, production-ready server code.
 
-> 🧩 Drag. 🔗 Connect. ⚡ Generate. No more boilerplate.
+> 🧩 **Drag** a node → 🔗 **Connect** the logic → ⚡ **Generate** the backend. That's it.
 
 <div align="center">
-<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="500">
+<img src="https://user-images.githubusercontent.com/74038190/212284100-561aa473-3905-4a80-b561-0d28506553ee.gif" width="480">
 </div>
+
+### ✨ Why Server Flow?
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🎯 Visual First**
+Design your entire API surface — routes, middleware, DB calls — as a connected flow instead of scattered files.
+
+**⚡ Instant Code Generation**
+Every flow compiles down to real, readable Express/Node code you actually own — no vendor lock-in.
+
+</td>
+<td width="50%" valign="top">
+
+**🧱 Composable Nodes**
+Reusable building blocks (auth, validation, DB queries, webhooks) that snap together like Lego.
+
+**🐳 Deploy Anywhere**
+Export a Dockerized project or ship straight to Vercel — the generated code is yours to run wherever you like.
+
+</td>
+</tr>
+</table>
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
@@ -55,17 +80,19 @@
 <td valign="top" width="50%">
 
 - [🛠️ Technology Stack](#-technology-stack)
+- [🧠 How It Works](#-how-it-works)
 - [📦 Prerequisites](#-prerequisites)
 - [📂 Project Structure](#-project-structure)
-- [🚀 Installation](#-installation)
+- [🚀 Installation](#-installation--running-the-project)
 
 </td>
 <td valign="top" width="50%">
 
 - [🔄 Development Workflow](#-development-workflow)
-- [📡 API Endpoints](#-api-endpoints)
+- [🗺️ Roadmap](#-roadmap)
 - [🤝 Contributing](#-contributing)
 - [👥 Team](#-team)
+- [📜 License](#-license)
 
 </td>
 </tr>
@@ -89,6 +116,24 @@
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
+## 🧠 How It Works
+
+```mermaid
+flowchart LR
+    A[🎨 Design Flow<br/>on Canvas] --> B[🔗 Connect Nodes<br/>Routes · Auth · DB · Logic]
+    B --> C[🧬 Generation Engine<br/>parses the graph]
+    C --> D[⚙️ Production Code<br/>Express + Node.js]
+    D --> E[🐳 Export & Deploy<br/>Docker / Vercel]
+
+    style A fill:#36BCF7,stroke:#0d1117,color:#fff
+    style B fill:#8E2DE2,stroke:#0d1117,color:#fff
+    style C fill:#F7B733,stroke:#0d1117,color:#111
+    style D fill:#4EA94B,stroke:#0d1117,color:#fff
+    style E fill:#FF6B6B,stroke:#0d1117,color:#fff
+```
+
+<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
+
 ## 📦 Prerequisites
 
 Before you begin, make sure you have the following installed:
@@ -106,8 +151,8 @@ git --version    # v2.x or higher
 
 ```text
 Server_Flow/
-├── client/          # React Frontend
-├── server/          # Node.js Backend
+├── client/          # React Frontend — the visual flow canvas
+├── server/          # Node.js Backend — API & code-gen engine
 ├── mcp-service/     # Microservice / MCP handling
 ├── .env.example     # Environment variables template
 ├── package.json     # Root package configuration
@@ -184,6 +229,16 @@ git push
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
+## 🗺️ Roadmap
+
+- [x] Visual flow canvas with React Flow
+- [x] Core code-generation engine
+- [x] Docker export
+- [ ] Node marketplace for community-built blocks
+- [ ] Live preview / test-run flows before export
+- [ ] GraphQL generation support
+- [ ] One-click Vercel deploy from canvas
+
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
 ## 🤝 Contributing
@@ -198,8 +253,30 @@ Contributions are what make the open-source community amazing! Please follow the
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
+## 👥 Team
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:8E2DE2,100:36BCF7&height=120&section=footer"/>
+<div align="center">
+<sub>Maintained by <a href="https://github.com/Gaurav775-Git">Gaurav775-Git</a> and the Server Flow community.</sub>
+</div>
+
+<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
+
+## 📜 License
+
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
+
+<div align="center">
+
+### ⭐ If Server Flow saves you boilerplate, consider starring the repo!
+
+<a href="https://star-history.com/#Gaurav775-Git/Server_Flow&Date">
+  <img src="https://api.star-history.com/svg?repos=Gaurav775-Git/Server_Flow&type=Date" width="60%" />
+</a>
+
+</div>
+
 
 <div align="center">
 <sub>Built with ❤️ for the backend community.</sub>
