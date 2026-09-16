@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router-dom";
+
 const CTASection = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#000000] px-6 py-20">
       {/* Decorative Braces */}
@@ -93,11 +97,13 @@ const CTASection = () => {
         </h2>
 
         {/* CTA Button */}
-        <a
-          href="/dashboard"
-          className="
-            mt-12
-            rounded-lg
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            navigate("/dashboard");
+          }}
+          className="mt-12 inline-block rounded-lg
             bg-[#a8df32]
             px-10
             py-3.5
@@ -111,8 +117,8 @@ const CTASection = () => {
             hover:shadow-[0_0_45px_rgba(168,223,50,0.45)]
           "
         >
-          Get building for free
-        </a>
+          Start building for free
+        </button>
 
         {/* Supporting Text */}
         <p className="mt-7 text-[8px] font-medium uppercase tracking-[0.35em] text-[#525761] sm:text-[9px]">
