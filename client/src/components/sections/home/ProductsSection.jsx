@@ -44,7 +44,7 @@ const ProductsSection = () => {
       <div className="max-w-[1100px] mx-auto px-6 text-center">
 
         <p className="text-[9px] tracking-[0.3em] uppercase font-bold text-[#a9d63e] mb-5">
-          Products
+          Product
         </p>
 
         <h2 className="text-4xl md:text-5xl font-black leading-tight text-[#e1e2eb] max-w-2xl mx-auto">

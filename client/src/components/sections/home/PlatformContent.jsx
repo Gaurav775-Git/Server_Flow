@@ -1,6 +1,9 @@
+import { useNavigate } from "react-router-dom";
 import PlatformFeatureItem from "./PlatformFeatureItem";
 
 const PlatformContent = () => {
+  const navigate = useNavigate();
+
   return (
     <div>
       {/* Section Label */}
@@ -32,12 +35,12 @@ const PlatformContent = () => {
       </div>
 
       {/* CTA Button */}
-      <a
-        href="/dashboard"
+      <button
+        onClick={() => navigate("/dashboard")}
         className="mt-10 inline-block rounded-lg border border-cyan-400 px-6 py-3 text-xs font-bold tracking-wider text-cyan-400 transition hover:bg-cyan-400 hover:text-black"
       >
         EXPLORE THE PLATFORM
-      </a>
+      </button>
     </div>
   );
 };
