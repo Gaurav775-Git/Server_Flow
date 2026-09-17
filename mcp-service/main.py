@@ -1,6 +1,8 @@
 import json
 import shutil
 import os
+import sys
+import traceback
 from datetime import datetime
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -8,7 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-from llm import ask_llm
+try:
+    from llm import ask_llm
+except Exception as exc:
+    sys.stderr.write(f"[main] LLM unavailable: {exc}\n")
+    ask_llm = None
 
 app = FastAPI()
 
@@ -95,7 +101,7 @@ async def download_project(background_tasks: BackgroundTasks):
 
 async def handle_chat(req: ChatRequest):
     server_params = StdioServerParameters(
-        command="python",
+        command=sys.executable,
         args=["server.py"]
     )
 
@@ -109,9 +115,8 @@ async def handle_chat(req: ChatRequest):
                 for t in mcp_tools]
 
             system = {"role": "system", "content": """You are a Server Flow assistant.
-Always use MCP tools before answering. Use project_files for file work.
-React Flow HTTP nodes are API routes, DATABASE nodes are data-store notes, and AUTH nodes are authentication notes.
-Keep replies short and helpful."""}
+You MUST call the MCP tools. When the user provides master_json, you MUST call 'validate_flow' and then 'generate_server_from_flow' before replying. Do not answer from memory.
+Use project_files for file work. React Flow HTTP nodes are API routes, DATA nodes are data stores, and SECURITY nodes are security components. Keep replies short and helpful."""}
 
             if req.master_json is not None:
                 project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -144,6 +149,9 @@ Keep replies short and helpful."""}
             ]
 
             while True:
+                if ask_llm is None:
+                    return {"reply": "LLM is unavailable. Set LLM_API_KEY and try again."}
+
                 msg = ask_llm(history, tools)
                 if msg.get("tool_calls"):
                     history.append(msg)
@@ -164,8 +172,26 @@ Keep replies short and helpful."""}
                             })
                     continue
 
-                history.append({"role": "assistant", "content": msg["content"]})
-                return {"reply": msg["content"]}
+                retry_instruction = {
+                    "role": "user",
+                    "content": "You did not call any tool. Call 'generate_server_from_flow' now using the current flow context.",
+                }
+                history.append(retry_instruction)
+                retry_msg = ask_llm(history, tools)
+                if retry_msg.get("tool_calls"):
+                    history.append(retry_msg)
+                    for call in retry_msg["tool_calls"]:
+                        args = json.loads(call["function"]["arguments"])
+                        result = await session.call_tool(call["function"]["name"], args)
+                        history.append({
+                            "role": "tool",
+                            "tool_call_id": call["id"],
+                            "content": result.content[0].text,
+                        })
+                    continue
+
+                history.append({"role": "assistant", "content": retry_msg.get("content", "")})
+                return {"reply": retry_msg.get("content", "")}
 
 
 @app.post("/chat")
@@ -173,7 +199,6 @@ async def chat(req: ChatRequest):
     try:
         return await handle_chat(req)
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return {"reply": f"Error in chat processing: {str(e)}"}
 
