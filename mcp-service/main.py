@@ -51,7 +51,7 @@ async def health():
 async def download_project(background_tasks: BackgroundTasks):
     try:
         if not os.path.exists(PROJECT_DIR):
-            raise HTTPException(status_code=404, detail="Project directory not found")
+            raise HTTPException(status_code=404, detail="No project found")
 
         subdirs = [
             d for d in os.listdir(PROJECT_DIR)
@@ -93,91 +93,88 @@ async def download_project(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 
+async def handle_chat(req: ChatRequest):
+    server_params = StdioServerParameters(
+        command="python",
+        args=["server.py"]
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            mcp_tools = (await session.list_tools()).tools
+            tools = [{"type": "function", "function": {
+                "name": t.name, "description": t.description, "parameters": t.inputSchema}}
+                for t in mcp_tools]
+
+            system = {"role": "system", "content": """You are a Server Flow assistant.
+Always use MCP tools before answering. Use project_files for file work.
+React Flow HTTP nodes are API routes, DATABASE nodes are data-store notes, and AUTH nodes are authentication notes.
+Keep replies short and helpful."""}
+
+            if req.master_json is not None:
+                project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                validation_result = await session.call_tool(
+                    "validate_flow", {"flow": req.master_json}
+                )
+                if validation_result.isError:
+                    error_msg = validation_result.content[0].text
+                    return {"reply": f"Flow validation failed: {error_msg}"}
+
+                result = await session.call_tool(
+                    "generate_server_from_flow",
+                    {"flow": req.master_json, "project_name": project_name}
+                )
+                outcome = result.content[0].text
+                if result.isError:
+                    return {"reply": f"Build error: {outcome}"}
+                return {"reply": outcome}
+
+            try:
+                project_state = await session.call_tool("project_files", {"action": "list"})
+                state_text = project_state.content[0].text
+            except Exception as e:
+                state_text = f"Error reading project: {str(e)}"
+
+            history = [
+                system,
+                {"role": "system", "content": f"MCP project file list: {state_text}"},
+                {"role": "user", "content": req.message}
+            ]
+
+            while True:
+                msg = ask_llm(history, tools)
+                if msg.get("tool_calls"):
+                    history.append(msg)
+                    for call in msg["tool_calls"]:
+                        try:
+                            args = json.loads(call["function"]["arguments"])
+                            result = await session.call_tool(call["function"]["name"], args)
+                            history.append({
+                                "role": "tool",
+                                "tool_call_id": call["id"],
+                                "content": result.content[0].text
+                            })
+                        except Exception as e:
+                            history.append({
+                                "role": "tool",
+                                "tool_call_id": call["id"],
+                                "content": f"Error: {str(e)}"
+                            })
+                    continue
+
+                history.append({"role": "assistant", "content": msg["content"]})
+                return {"reply": msg["content"]}
+
+
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        server_params = StdioServerParameters(
-            command="python",
-            args=["server.py"]
-        )
-
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-
-                mcp_tools = (await session.list_tools()).tools
-                tools = [{"type": "function", "function": {
-                            "name": t.name, "description": t.description, "parameters": t.inputSchema}}
-                          for t in mcp_tools]
-
-                system = {"role": "system", "content": """You are a Server Flow assistant. 
-Always use MCP tools before answering. Use project_files for file work. 
-React Flow HTTP nodes are API routes, DATABASE nodes are data-store notes, and AUTH nodes are authentication notes. 
-Keep replies short and helpful."""}
-
-                if req.master_json is not None:
-                    project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-                    try:
-                        validation_result = await session.call_tool(
-                            "validate_flow", {"flow": req.master_json}
-                        )
-                        if validation_result.isError:
-                            error_msg = validation_result.content[0].text
-                            return {"reply": f"Flow validation failed: {error_msg}"}
-
-                        result = await session.call_tool(
-                            "generate_server_from_flow",
-                            {"flow": req.master_json, "project_name": project_name}
-                        )
-                        outcome = result.content[0].text
-
-                        if result.isError:
-                            return {"reply": f"Build error: {outcome}"}
-
-                        return {"reply": outcome}
-
-                    except Exception as e:
-                        return {"reply": f"Error processing workflow: {str(e)}"}
-
-                try:
-                    project_state = await session.call_tool("project_files", {"action": "list"})
-                    state_text = project_state.content[0].text
-                except Exception as e:
-                    state_text = f"Error reading project: {str(e)}"
-
-                history = [
-                    system,
-                    {"role": "system", "content": f"MCP project file list: {state_text}"},
-                    {"role": "user", "content": req.message}
-                ]
-
-                while True:
-                    msg = ask_llm(history, tools)
-
-                    if msg.get("tool_calls"):
-                        history.append(msg)
-                        for call in msg["tool_calls"]:
-                            try:
-                                args = json.loads(call["function"]["arguments"])
-                                result = await session.call_tool(call["function"]["name"], args)
-                                history.append({
-                                    "role": "tool",
-                                    "tool_call_id": call["id"],
-                                    "content": result.content[0].text
-                                })
-                            except Exception as e:
-                                history.append({
-                                    "role": "tool",
-                                    "tool_call_id": call["id"],
-                                    "content": f"Error: {str(e)}"
-                                })
-                        continue
-
-                    history.append({"role": "assistant", "content": msg["content"]})
-                    return {"reply": msg["content"]}
-
+        return await handle_chat(req)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return {"reply": f"Error in chat processing: {str(e)}"}
 
 
