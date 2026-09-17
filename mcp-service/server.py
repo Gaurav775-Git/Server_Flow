@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import hashlib
+import sys
 from datetime import datetime
 from mcp.server.fastmcp import FastMCP
 import re
@@ -64,7 +65,10 @@ def normalize_flow(flow) -> dict:
         ids.add(node["id"])
 
         category = str(node.get("category", "")).upper()
-        if category not in {"HTTP", "DATABASE", "AUTH", "LOGIC", "TRANSFORM", "RESPONSE"}:
+        if category not in {
+            "HTTP", "TRAFFIC", "COMPUTE", "DATA", "DATABASE", "SECURITY", "AUTH",
+            "OBSERVABILITY", "MESSAGING", "LOGIC", "TRANSFORM", "RESPONSE",
+        }:
             raise ValueError(f"Unsupported node category: {category or 'missing'}")
 
         config = node.get("configuration") or {}
@@ -80,6 +84,7 @@ def normalize_flow(flow) -> dict:
 
         normalized_nodes.append({
             "id": node["id"],
+            "kind": str(node.get("kind", "")).lower(),
             "category": category,
             "type": str(node.get("type", "")).upper(),
             "configuration": config
@@ -155,7 +160,7 @@ Generate ONLY the JavaScript code for a complete `app.js` file (no extra text or
         return code, "LLM"
     except Exception as e:
         error_msg = f"LLM error: {str(e)}"
-        print(f"[generate_code_with_llm] {error_msg}")
+        sys.stderr.write(f"[generate_code_with_llm] {error_msg}\n")
         return None, error_msg
 
 
@@ -451,7 +456,7 @@ def build_complete_project(flow, project_name="server-flow-api"):
     for node in nodes:
         config = node["configuration"]
         category = node["category"]
-        if category == "HTTP":
+        if category == "HTTP" or node["kind"] == "http_route":
             method = node["type"] if node["type"] in HTTP_METHODS else "GET"
             endpoint = config.get("endpoint") or config.get("path") or config.get("route") or "/"
             if not endpoint.startswith("/"):
@@ -464,9 +469,13 @@ def build_complete_project(flow, project_name="server-flow-api"):
                 "name": config.get("name", "default"),
                 "handler": config.get("handler", "handler")
             })
-        elif category == "DATABASE":
+        elif category in {"DATABASE", "DATA"} and node["kind"] in {
+            "", "mongodb", "mongodb_database", "postgres", "postgres_database",
+        }:
             database_config = {"type": node["type"], "description": config.get("description", "Database")}
-        elif category == "AUTH":
+        elif category in {"AUTH", "SECURITY"} and node["kind"] in {
+            "", "auth", "jwt_authentication",
+        }:
             auth_config = {"type": node["type"], "description": config.get("description", "Authentication")}
 
     project_path = os.path.join(PROJECT_DIR, project_name)
