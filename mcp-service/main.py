@@ -102,7 +102,8 @@ async def download_project(background_tasks: BackgroundTasks):
 async def handle_chat(req: ChatRequest):
     server_params = StdioServerParameters(
         command=sys.executable,
-        args=["server.py"]
+        args=["server.py"],
+        env={**os.environ},
     )
 
     async with stdio_client(server_params) as (read, write):
