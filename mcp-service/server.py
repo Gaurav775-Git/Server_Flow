@@ -10,9 +10,10 @@ import re
 try:
     from llm import ask_llm
     HAS_LLM = True
-except ImportError:
+except Exception as exc:
     HAS_LLM = False
     ask_llm = None
+    sys.stderr.write(f"[server] LLM unavailable; using template fallback: {exc}\n")
 
 mcp = FastMCP("Server_Flow")
 
