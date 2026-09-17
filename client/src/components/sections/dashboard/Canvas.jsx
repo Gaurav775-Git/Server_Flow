@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   MiniMap,
+  ConnectionLineType,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -76,9 +77,31 @@ const FlowCanvas = () => {
     setNodes((current) => [...current, duplicate]);
   };
 
+  const isValidConnection = useCallback(
+    (connection) => {
+      if (connection.source === connection.target) return false;
+      return !edges.some(
+        (edge) =>
+          edge.source === connection.source &&
+          edge.target === connection.target,
+      );
+    },
+    [edges],
+  );
+
   const onConnect = (connection) => {
-    console.log("connection :", connection);
-    setEdges((edges) => addEdge(connection, edges));
+    if (!isValidConnection(connection)) return;
+    setEdges((currentEdges) =>
+      addEdge(
+        {
+          ...connection,
+          type: ConnectionLineType.SmoothStep,
+          animated: true,
+          style: { stroke: "#64748b", strokeWidth: 1.5 },
+        },
+        currentEdges,
+      ),
+    );
   };
   const onDropEvent = (event) => {
     if (showConfig) {
@@ -272,6 +295,16 @@ const FlowCanvas = () => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        connectionLineStyle={{ stroke: "#94a3b8", strokeWidth: 2 }}
+        defaultEdgeOptions={{
+          type: ConnectionLineType.SmoothStep,
+          animated: true,
+          style: { stroke: "#64748b", strokeWidth: 1.5 },
+        }}
+        snapToGrid
+        snapGrid={[16, 16]}
         onDragOver={(event) => {
           if (!showConfig) {
             event.preventDefault();
