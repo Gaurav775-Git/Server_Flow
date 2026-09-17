@@ -253,13 +253,6 @@ Contributions are what make the open-source community amazing! Please follow the
 
 <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
-## 👥 Team
-
-<div align="center">
-<sub>Maintained by <a href="https://github.com/Gaurav775-Git">Gaurav775-Git</a> and the Server Flow community.</sub>
-</div>
-
-<img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.gif" width="100%" height="4px"/>
 
 ## 📜 License
 
