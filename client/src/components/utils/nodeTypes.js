@@ -1,86 +1,53 @@
+const node = (kind, label, category, description, config) => ({
+  kind,
+  type: kind.toUpperCase(),
+  label,
+  category,
+  description,
+  configured: false,
+  config,
+});
+
+export const categoryMeta = {
+  TRAFFIC: { label: "Traffic", dot: "bg-cyan-400" },
+  COMPUTE: { label: "Compute", dot: "bg-violet-400" },
+  DATA: { label: "Data", dot: "bg-emerald-400" },
+  SECURITY: { label: "Security", dot: "bg-amber-400" },
+  OBSERVABILITY: { label: "Observability", dot: "bg-blue-400" },
+  MESSAGING: { label: "Messaging", dot: "bg-rose-400" },
+};
+
 export const nodeTypes = [
-  {
-    kind: "http_route",
-    type: "GET",
-    label: "GET",
-    category: "HTTP",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "http_route",
-    type: "POST",
-    label: "POST",
-    category: "HTTP",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "http_route",
-    type: "PUT",
-    label: "PUT",
-    category: "HTTP",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "http_route",
-    type: "PATCH",
-    label: "PATCH",
-    category: "HTTP",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "http_route",
-    type: "DELETE",
-    label: "DELETE",
-    category: "HTTP",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "mongodb_database",
-    type: "MONGODB",
-    label: "MongoDB",
-    category: "DATABASE",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
-  {
-    kind: "jwt_authentication",
-    type: "JWT",
-    label: "JWT",
-    category: "AUTH",
-    configured: "false",
-
-    config: {
-      endpoint: "",
-      description: "",
-    },
-  },
+  node("http_route", "GET", "TRAFFIC", "HTTP GET endpoint", { method: "GET", endpoint: "", description: "" }),
+  node("http_route", "POST", "TRAFFIC", "HTTP POST endpoint", { method: "POST", endpoint: "", description: "" }),
+  node("http_route", "PUT", "TRAFFIC", "HTTP PUT endpoint", { method: "PUT", endpoint: "", description: "" }),
+  node("http_route", "PATCH", "TRAFFIC", "HTTP PATCH endpoint", { method: "PATCH", endpoint: "", description: "" }),
+  node("http_route", "DELETE", "TRAFFIC", "HTTP DELETE endpoint", { method: "DELETE", endpoint: "", description: "" }),
+  node("client", "Client", "TRAFFIC", "Browser, mobile, or API consumer", { client_type: "web", platform: "browser", base_url: "", description: "" }),
+  node("loadbalancer", "Load Balancer", "TRAFFIC", "Distributes traffic across servers", { algorithm: "round_robin", health_check_path: "/health", sticky_sessions: false, description: "" }),
+  node("cdn", "CDN", "TRAFFIC", "Caches content at the edge", { provider: "cloudfront", cache_paths: "", ttl_seconds: 3600, description: "" }),
+  node("api_gateway", "API Gateway", "TRAFFIC", "Routes and throttles API traffic", { provider: "express", routes: "", throttling: true, description: "" }),
+  node("reverse_proxy", "Reverse Proxy", "TRAFFIC", "Nginx-style request proxy", { server: "nginx", upstream: "", tls_termination: true, description: "" }),
+  node("server", "Server", "COMPUTE", "Runs the application runtime", { runtime: "node", port: 3000, replicas: 1, env_vars: "", description: "" }),
+  node("worker", "Worker", "COMPUTE", "Processes background jobs", { runtime: "node", concurrency: 1, queue: "", description: "" }),
+  node("queue", "Queue", "COMPUTE", "Buffers asynchronous work", { technology: "rabbitmq", name: "", delivery: "at_least_once", description: "" }),
+  node("scheduler", "Cron / Scheduler", "COMPUTE", "Triggers work on a schedule", { cron: "0 * * * *", timezone: "UTC", target: "", description: "" }),
+  node("serverless_function", "Serverless Function", "COMPUTE", "Runs event-driven code", { runtime: "node", trigger: "http", memory_mb: 256, timeout_seconds: 30, description: "" }),
+  node("postgres", "PostgreSQL", "DATA", "Relational database", { host: "", port: 5432, database: "", table: "", schema_notes: "" }),
+  node("mongodb", "MongoDB", "DATA", "Document database", { host: "", port: 27017, database: "", collection: "", schema_notes: "" }),
+  node("redis", "Redis", "DATA", "Cache and session store", { host: "", port: 6379, purpose: "cache", ttl_seconds: 3600, description: "" }),
+  node("object_storage", "Object Storage", "DATA", "S3-like file storage", { provider: "s3", bucket: "", region: "", public_access: false, description: "" }),
+  node("vector_db", "Vector DB", "DATA", "Embeddings store", { provider: "pgvector", index: "", dimensions: 1536, metric: "cosine", description: "" }),
+  node("rate_limiter", "Rate Limiter", "SECURITY", "Limits requests by scope", { max_requests: 100, window_seconds: 60, scope: "ip", algorithm: "sliding_window", description: "" }),
+  node("auth", "Auth", "SECURITY", "JWT, OAuth, or session auth", { strategy: "jwt", issuer: "", session_store: "", description: "" }),
+  node("waf", "WAF", "SECURITY", "Web application firewall", { provider: "cloudflare", rules: "", mode: "blocking", description: "" }),
+  node("secrets_vault", "Secrets Vault", "SECURITY", "Managed application secrets", { provider: "vault", secret_names: "", rotation_days: 90, description: "" }),
+  node("logger", "Logger", "OBSERVABILITY", "Structured application logs", { format: "json", provider: "console", retention_days: 30, description: "" }),
+  node("metrics", "Metrics", "OBSERVABILITY", "Prometheus-style metrics", { provider: "prometheus", endpoint: "/metrics", metrics: "", description: "" }),
+  node("tracing", "Tracing", "OBSERVABILITY", "OpenTelemetry distributed traces", { provider: "opentelemetry", exporter: "otlp", sample_rate: 1, description: "" }),
+  node("alerting", "Alerting", "OBSERVABILITY", "PagerDuty-style incident alerts", { provider: "pagerduty", severity: "error", conditions: "", description: "" }),
+  node("email_service", "Email Service", "MESSAGING", "Sends transactional email", { provider: "sendgrid", from: "", templates: "", description: "" }),
+  node("sms_service", "SMS Service", "MESSAGING", "Sends text messages", { provider: "twilio", from: "", description: "" }),
+  node("push_notification", "Push Notification", "MESSAGING", "Sends mobile push notifications", { provider: "fcm", topic: "", description: "" }),
+  node("webhook_dispatcher", "Webhook Dispatcher", "MESSAGING", "Delivers outbound webhooks", { retry_attempts: 3, timeout_seconds: 10, signing: true, description: "" }),
 ];
