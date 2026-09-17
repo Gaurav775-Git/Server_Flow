@@ -10,8 +10,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { CustomNode } from "../../utils/ReactFlowCustomNodes";
-import HttpForm from "./ConfigForms/HttpForm";
-import DatabaseForm from "./ConfigForms/DatabaseForm";
+import NodeConfigForm from "./ConfigForms/NodeConfigForm";
 import { useCallback, useEffect, useState } from "react";
 
 const initialNodes = [];
@@ -50,29 +49,31 @@ const FlowCanvas = () => {
     setSelectedNode(null);
   };
 
-  const renderConfigForm = () => {
-    if (!selectedNode) {
-      return null;
-    }
-    if (selectedNode.data.category === "HTTP") {
-      return (
-        <HttpForm
-          node={selectedNode}
-          onSave={handleConfigSave}
-          onClose={handleConfigClose}
-        />
-      );
-    }
-    if (selectedNode.data.category === "DATABASE") {
-      return (
-        <DatabaseForm
-          node={selectedNode}
-          onSave={handleConfigSave}
-          onClose={handleConfigClose}
-        />
-      );
-    }
-    return null;
+  const renderConfigForm = () => selectedNode && (
+    <NodeConfigForm node={selectedNode} onSave={handleConfigSave} onClose={handleConfigClose} />
+  );
+
+  const openConfig = (node) => {
+    setSelectedNode(node);
+    setShowConfig(true);
+  };
+
+  const deleteNode = (nodeId) => {
+    setNodes((current) => current.filter((node) => node.id !== nodeId));
+    setEdges((current) => current.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+  };
+
+  const duplicateNode = (node) => {
+    const duplicate = {
+      ...node,
+      id: crypto.randomUUID(),
+      position: { x: node.position.x + 40, y: node.position.y + 40 },
+      data: { ...node.data },
+    };
+    duplicate.data.onConfigure = () => openConfig(duplicate);
+    duplicate.data.onDelete = () => deleteNode(duplicate.id);
+    duplicate.data.onDuplicate = () => duplicateNode(duplicate);
+    setNodes((current) => [...current, duplicate]);
   };
 
   const onConnect = (connection) => {
@@ -103,16 +104,16 @@ const FlowCanvas = () => {
         type: node.type,
         label: node.label,
         category: node.category,
-        configured: false,
-        config: {},
+        description: node.description,
+        configured: node.configured,
+        config: { ...node.config },
+        onConfigure: () => openConfig(newNode),
+        onDelete: () => deleteNode(newNode.id),
+        onDuplicate: () => duplicateNode(newNode),
       },
     };
-    const needsConfig = node.category === "HTTP" || node.category === "DATABASE";
     setNodes((nodes) => [...nodes, newNode]);
-    if (needsConfig) {
-      setSelectedNode(newNode);
-      setShowConfig(true);
-    }
+    openConfig(newNode);
   };
 
   const generateMasterJson = useCallback(() => {
@@ -178,68 +179,20 @@ const FlowCanvas = () => {
         },
       },
 
-      nodes: nodes.map((node) => {
-        if (node.data.category === "HTTP") {
-          return {
-            id: node.id,
-            kind: node.data.kind,
-            category: node.data.category,
-            operation: node.data.type,
-            purpose: `Handle ${node.data.type} Http Request `,
-            configuration: node.data.config,
-            generation_rules: [
-              "Create an Express route for this HTTP operation.",
-              "Use the configured endpoint exactly.",
-              "Use the HTTP method specified by the operation.",
-              "Use the configured description to understand the intended purpose of the endpoint.",
-              "Connect this route to services represented by its outgoing connections.",
-              "Return an appropriate HTTP response.",
-            ],
-          };
-        }
-
-        if (node.data.category === "DATABASE") {
-          return {
-            id: node.id,
-            kind: node.data.kind,
-            category: node.data.category,
-            operation: node.data.type,
-            purpose: `Provide ${node.data.type} database access for connected server application `,
-            configuration: node.data.config,
-            generation_rules: [
-              `Use ${node.data.type} as the database technology.`,
-              "Create the required database connection layer.",
-              "Load database credentials from environment variables.",
-              "Do not hardcode database credentials.",
-              "Provide database access to connected application components.",
-              "Create models or database access logic when required by the configuration.",
-            ],
-          };
-        }
-        if (node.data.category === "AUTH") {
-          return {
-            id: node.id,
-
-            kind: "authentication",
-
-            category: "AUTH",
-
-            operation: node.data.type,
-
-            purpose: `Provide ${node.data.type} authentication functionality for connected routes.`,
-
-            configuration: node.data.config,
-
-            generation_rules: [
-              "Implement the configured authentication mechanism.",
-              "Protect HTTP routes connected to this authentication node.",
-              "Use authentication middleware where required.",
-              "Never hardcode authentication secrets.",
-              "Load authentication secrets from environment variables.",
-            ],
-          };
-        }
-      }),
+      nodes: nodes.map((node) => ({
+        id: node.id,
+        kind: node.data.kind,
+        category: node.data.category,
+        operation: node.data.config?.method || node.data.config?.runtime || node.data.config?.provider || node.data.type,
+        purpose: node.data.description || `Configure ${node.data.label} for the generated application.`,
+        configuration: node.data.config || {},
+        generation_rules: [
+          `Implement the ${node.data.label} node using its configured values.`,
+          "Use configuration as the source of truth and represent this node in the generated project.",
+          "Use environment variables for credentials, tokens, and external service secrets.",
+          "Connect this component according to its graph relationships.",
+        ],
+      })),
 
       connections: edges.map((edge) => {
         const sourceNode = nodes.find((node) => node.id === edge.source);
@@ -253,27 +206,18 @@ const FlowCanvas = () => {
         let generation_rule =
           "Reflect this connection in the generated application.";
 
-        if (
-          sourceNode.data.category === "HTTP" &&
-          targetNode.data.category === "DATABASE"
-        ) {
-          relationship = "uses_database";
+        if (sourceNode && targetNode) {
+          if (sourceNode.data.kind === "client") relationship = "requests";
+          if (sourceNode.data.kind === "loadbalancer" && targetNode.data.kind === "server") relationship = "routes_to";
+          if (sourceNode.data.kind === "rate_limiter") relationship = "rate_limits";
+          if (targetNode.data.kind === "rate_limiter") relationship = "rate_limited_by";
+          if (targetNode.data.category === "DATA") relationship = "stores_in";
+          if (targetNode.data.category === "SECURITY" && targetNode.data.kind === "auth") relationship = "protected_by";
+          if (targetNode.data.category === "MESSAGING") relationship = "publishes_to";
           meaning =
-            "The HTTP route uses the connected database to perform its required data operations.";
-
+            `The ${sourceNode.data.label} component uses or communicates with the ${targetNode.data.label} component.`;
           generation_rule =
-            "Connect the HTTP route to the database access layer represented by the target node.";
-        }
-        if (
-          sourceNode?.data.category === "HTTP" &&
-          targetNode?.data.category === "AUTH"
-        ) {
-          relationship = "protected_by";
-          meaning =
-            "The HTTP route requires authentication before its request handler can execute.";
-
-          generation_rule =
-            "Apply the authentication middleware represented by the target node to the HTTP route.";
+            `Generate the ${relationship} relationship between these components.`;
         }
         return {
           source: edge.source,
