@@ -1,6 +1,3 @@
-"""
-
-
 def write_template_project(project_path, project_name):
     os.makedirs(os.path.join(project_path, "src"), exist_ok=True)
 
