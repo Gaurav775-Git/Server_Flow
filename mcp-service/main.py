@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
 try:
     from llm import ask_llm
 except Exception as exc:
@@ -39,7 +40,7 @@ def cleanup_zip(zip_path: str):
     try:
         if os.path.exists(zip_path):
             os.remove(zip_path)
-    except:
+    except Exception:
         pass
 
 
@@ -103,7 +104,7 @@ async def handle_chat(req: ChatRequest):
     server_params = StdioServerParameters(
         command=sys.executable,
         args=["server.py"],
-        env={**os.environ},
+        env={**os.environ},   # forward LLM_API_KEY to subprocess
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -111,16 +112,28 @@ async def handle_chat(req: ChatRequest):
             await session.initialize()
 
             mcp_tools = (await session.list_tools()).tools
-            tools = [{"type": "function", "function": {
-                "name": t.name, "description": t.description, "parameters": t.inputSchema}}
-                for t in mcp_tools]
+            tools = [{
+                "type": "function",
+                "function": {
+                    "name": t.name,
+                    "description": t.description,
+                    "parameters": t.inputSchema,
+                },
+            } for t in mcp_tools]
 
-            system = {"role": "system", "content": """You are a Server Flow assistant.
-You MUST call the MCP tools. When the user provides master_json, you MUST call 'validate_flow' and then 'generate_server_from_flow' before replying. Do not answer from memory.
-Use project_files for file work. React Flow HTTP nodes are API routes, DATA nodes are data stores, and SECURITY nodes are security components. Keep replies short and helpful."""}
+            system = {
+                "role": "system",
+                "content": (
+                    "You are a Server Flow assistant. You MUST call the MCP tools. "
+                    "When the user provides master_json, you MUST call 'validate_flow' and "
+                    "then 'generate_server_from_flow' before replying. Do not answer from memory. "
+                    "Keep replies short and helpful."
+                ),
+            }
 
             if req.master_json is not None:
                 project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
                 validation_result = await session.call_tool(
                     "validate_flow", {"flow": req.master_json}
                 )
@@ -138,7 +151,9 @@ Use project_files for file work. React Flow HTTP nodes are API routes, DATA node
                 return {"reply": outcome}
 
             try:
-                project_state = await session.call_tool("project_files", {"action": "list"})
+                project_state = await session.call_tool(
+                    "project_files", {"action": "list"}
+                )
                 state_text = project_state.content[0].text
             except Exception as e:
                 state_text = f"Error reading project: {str(e)}"
@@ -146,7 +161,7 @@ Use project_files for file work. React Flow HTTP nodes are API routes, DATA node
             history = [
                 system,
                 {"role": "system", "content": f"MCP project file list: {state_text}"},
-                {"role": "user", "content": req.message}
+                {"role": "user", "content": req.message},
             ]
 
             while True:
@@ -163,36 +178,21 @@ Use project_files for file work. React Flow HTTP nodes are API routes, DATA node
                             history.append({
                                 "role": "tool",
                                 "tool_call_id": call["id"],
-                                "content": result.content[0].text
+                                "content": result.content[0].text,
                             })
                         except Exception as e:
                             history.append({
                                 "role": "tool",
                                 "tool_call_id": call["id"],
-                                "content": f"Error: {str(e)}"
+                                "content": f"Error: {str(e)}",
                             })
                     continue
 
-                retry_instruction = {
-                    "role": "user",
-                    "content": "You did not call any tool. Call 'generate_server_from_flow' now using the current flow context.",
-                }
-                history.append(retry_instruction)
-                retry_msg = ask_llm(history, tools)
-                if retry_msg.get("tool_calls"):
-                    history.append(retry_msg)
-                    for call in retry_msg["tool_calls"]:
-                        args = json.loads(call["function"]["arguments"])
-                        result = await session.call_tool(call["function"]["name"], args)
-                        history.append({
-                            "role": "tool",
-                            "tool_call_id": call["id"],
-                            "content": result.content[0].text,
-                        })
-                    continue
-
-                history.append({"role": "assistant", "content": retry_msg.get("content", "")})
-                return {"reply": retry_msg.get("content", "")}
+                history.append({
+                    "role": "assistant",
+                    "content": msg.get("content", ""),
+                })
+                return {"reply": msg.get("content", "")}
 
 
 @app.post("/chat")
