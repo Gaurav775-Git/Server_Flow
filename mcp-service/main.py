@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 from datetime import datetime
+from typing import Optional
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +45,17 @@ def cleanup_zip(zip_path: str):
         pass
 
 
+def list_project_dirs() -> list[str]:
+    """Real generated projects only - excludes hidden/internal dirs like .serverflow
+    (server.py's metadata folder, which lives inside PROJECT_DIR and has its own
+    mtime bumped on every generation run - without this filter it could be picked
+    as the 'latest' project and zipped instead of the actual generated code)."""
+    return [
+        d for d in os.listdir(PROJECT_DIR)
+        if os.path.isdir(os.path.join(PROJECT_DIR, d)) and not d.startswith(".")
+    ]
+
+
 @app.get("/")
 async def root():
     return {"message": "Server Flow MCP Service", "status": "running"}
@@ -55,32 +67,41 @@ async def health():
 
 
 @app.get("/download")
-async def download_project(background_tasks: BackgroundTasks):
+async def download_project(
+    background_tasks: BackgroundTasks,
+    project_name: Optional[str] = None,
+):
     try:
         if not os.path.exists(PROJECT_DIR):
             raise HTTPException(status_code=404, detail="No project found")
 
-        subdirs = [
-            d for d in os.listdir(PROJECT_DIR)
-            if os.path.isdir(os.path.join(PROJECT_DIR, d))
-        ]
+        subdirs = list_project_dirs()
         if not subdirs:
             raise HTTPException(status_code=404, detail="No project found")
 
-        latest_project = max(
-            subdirs,
-            key=lambda d: os.path.getmtime(os.path.join(PROJECT_DIR, d))
-        )
-        latest_path = os.path.join(PROJECT_DIR, latest_project)
+        if project_name:
+            if project_name not in subdirs:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Project '{project_name}' not found. Available: {subdirs}",
+                )
+            target_project = project_name
+        else:
+            target_project = max(
+                subdirs,
+                key=lambda d: os.path.getmtime(os.path.join(PROJECT_DIR, d))
+            )
+
+        target_path = os.path.join(PROJECT_DIR, target_project)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"server_flow_{latest_project}_{timestamp}"
+        zip_filename = f"server_flow_{target_project}_{timestamp}"
         zip_path = os.path.join(BASE_DIR, f"{zip_filename}.zip")
 
         shutil.make_archive(
             os.path.join(BASE_DIR, zip_filename),
             "zip",
-            latest_path
+            target_path
         )
 
         if not os.path.exists(zip_path):
@@ -91,7 +112,7 @@ async def download_project(background_tasks: BackgroundTasks):
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"{latest_project}.zip"
+            filename=f"{target_project}.zip"
         )
 
     except HTTPException:
