@@ -32,6 +32,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
@@ -67,13 +68,34 @@ KNOWN_CATEGORIES = {
     "OBSERVABILITY", "MESSAGING", "LOGIC", "TRANSFORM", "RESPONSE",
 }
 
-LLM_RETRIES = 2              # transport-level retries per LLM call
-PLAN_ATTEMPTS = 3            # planning attempts (with feedback) before falling back to blueprint
-MAX_WRITE_ATTEMPTS = 3       # write -> validate -> self-fix cycles per file
-MAX_REPAIR_ROUNDS = 2        # project-level verify -> repair rounds
-DEP_CONTEXT_BUDGET = 24000   # chars of dependency source shown when writing a file
-REVIEW_CHAR_BUDGET = 60000   # chars of source shown to the LLM reviewer
+LLM_RETRIES = 1               # transport-level retries per LLM call (timeouts make extra retries cheap-ish, keep low)
+LLM_CALL_TIMEOUT_SEC = 90     # hard ceiling per LLM call; a stuck call fails this attempt instead of hanging the job
+PLAN_ATTEMPTS = 2             # planning attempts (with feedback) before falling back to blueprint
+MAX_WRITE_ATTEMPTS = 2        # write -> validate -> self-fix cycles per file
+MAX_REPAIR_ROUNDS = 2         # project-level verify -> repair rounds
+MAX_PARALLEL_WRITES = 5       # files written/repaired concurrently within a dependency wave
+DEP_CONTEXT_BUDGET = 24000    # chars of dependency source shown when writing a file
+REVIEW_CHAR_BUDGET = 60000    # chars of source shown to the LLM reviewer
 MAX_FILE_BYTES = 300_000
+
+# Phase -> (start_percent, end_percent) used to turn step counters into one smooth 0-100 bar.
+PHASE_RANGES = {
+    "planning": (0, 15),
+    "writing": (15, 80),
+    "verifying": (80, 90),
+    "repairing": (90, 99),
+    "done": (100, 100),
+    "failed": (100, 100),
+}
+
+
+def phase_percent(phase: Optional[str], current: Optional[int], total: Optional[int]) -> float:
+    lo, hi = PHASE_RANGES.get(phase or "", (0, 0))
+    if phase in ("done", "failed"):
+        return 100.0
+    if total:
+        return round(lo + (hi - lo) * max(0, min(current or 0, total)) / total, 1)
+    return float(lo)
 
 META_ORDER = [".gitignore", "package.json", ".env.example", "readme.md"]
 MANDATORY_FILES = {
@@ -124,7 +146,9 @@ PERSONA = (
 )
 
 
-def log(msg: str) -> None:
+def log(msg: str, **_ignored) -> None:
+    """Default progress sink. Accepts and ignores the structured phase/current/total kwargs that
+    job-aware callers pass, so it can be used interchangeably with the job progress callback below."""
     sys.stderr.write(f"[server] {msg}\n")
     sys.stderr.flush()
 
@@ -225,16 +249,45 @@ def _response_text(resp: Any) -> str:
     return content or ""
 
 
-def call_llm(prompt: str, retries: int = LLM_RETRIES) -> str:
+def _ask_llm_with_timeout(prompt: str, timeout: float) -> str:
+    """Runs ask_llm on its own daemon thread and stops waiting at `timeout`. Using a plain daemon
+    Thread (rather than a shared ThreadPoolExecutor) means a genuinely hung call never keeps the
+    process alive at shutdown and never ties up pool capacity other calls need - it's simply
+    abandoned; its result, if it ever arrives, is discarded."""
+    box: dict = {}
+
+    def _target() -> None:
+        try:
+            box["resp"] = ask_llm([{"role": "user", "content": prompt}])
+        except Exception as exc:  # captured and re-raised on the caller's thread below
+            box["exc"] = exc
+
+    th = threading.Thread(target=_target, daemon=True)
+    th.start()
+    th.join(timeout)
+    if th.is_alive():
+        raise TimeoutError(f"timed out after {timeout:.0f}s")
+    if "exc" in box:
+        raise box["exc"]
+    return _response_text(box.get("resp"))
+
+
+def call_llm(prompt: str, retries: int = LLM_RETRIES, timeout: Optional[float] = None) -> str:
+    """Calls ask_llm with a hard wall-clock timeout so one stuck call can never hang a whole job.
+    `timeout` reads LLM_CALL_TIMEOUT_SEC at call time (not as a baked-in default) so it can be tuned
+    - e.g. in tests, or by an ops override - without redefining this function."""
     if not HAS_LLM or ask_llm is None:
         raise LLMError("LLM unavailable")
+    timeout = LLM_CALL_TIMEOUT_SEC if timeout is None else timeout
     last = "unknown error"
     for attempt in range(retries + 1):
         try:
-            text = _response_text(ask_llm([{"role": "user", "content": prompt}]))
+            text = _ask_llm_with_timeout(prompt, timeout)
             if text.strip():
                 return text
             last = "empty response"
+        except TimeoutError as exc:
+            last = str(exc)
         except Exception as exc:
             last = f"{type(exc).__name__}: {exc}"
         log(f"LLM call failed (attempt {attempt + 1}/{retries + 1}): {last}")
@@ -895,6 +948,27 @@ def order_plan_files(files: list) -> list:
     return [by_path[p] for p in code + meta]  # meta last: they describe what the code actually uses
 
 
+def compute_waves(files: list) -> list:
+    """Group plan files into dependency 'waves': every file in a wave only depends on files from
+    earlier waves (or on nothing), so a whole wave can be written/repaired concurrently. Meta files
+    (package.json etc.) depend on nothing structural and land in the first wave that's free, same as
+    order_plan_files puts them last only because they read the code, not because of a hard dependency -
+    depends_on already captures any real ordering need, so no separate meta handling is needed here."""
+    by_path = {f["path"]: f for f in files}
+    paths = set(by_path)
+    done: set = set()
+    remaining = list(by_path)
+    waves = []
+    while remaining:
+        ready = [p for p in remaining if all(d in done or d not in paths for d in by_path[p]["depends_on"])]
+        if not ready:  # dependency cycle slipped through sanitize_plan - release everything left at once
+            ready = list(remaining)
+        waves.append(ready)
+        done.update(ready)
+        remaining = [p for p in remaining if p not in done]
+    return waves
+
+
 def sanitize_plan(plan: Any, graph: dict) -> dict:
     if isinstance(plan, list):
         plan = {"files": plan}
@@ -1083,7 +1157,7 @@ class BuildContext:
     analysis: dict
     plan: dict
     project_path: str
-    progress: Callable[[str], None] = log
+    progress: Callable = log  # progress(msg, phase=None, current=None, total=None) - `log` ignores the kwargs
     written: dict = field(default_factory=dict)
     failed: dict = field(default_factory=dict)
 
@@ -1304,6 +1378,8 @@ If there is nothing wrong return {{"issues": []}}. Maximum 12 issues.
 
 
 def repair_file(ctx: BuildContext, path: str, problems: list) -> bool:
+    """Thread-safe: only ever touches ctx.written[path]/ctx.failed[path] for its own `path`, so
+    concurrent repairs of different files never step on each other's keys."""
     spec = next((f for f in ctx.plan["files"] if f["path"] == path), None)
     if spec is None:
         spec = {"path": path, "purpose": "project file", "nodes": [], "depends_on": [], "exports": ""}
@@ -1330,8 +1406,19 @@ def repair_file(ctx: BuildContext, path: str, problems: list) -> bool:
     return not remaining
 
 
-def verify_and_repair(ctx: BuildContext, use_llm_review: bool = True) -> list:
-    """Alternate deterministic checks / LLM review with targeted rewrites. Returns remaining issues."""
+def _repair_safe(ctx: BuildContext, path: str, problems: list) -> tuple:
+    try:
+        return path, repair_file(ctx, path, problems)
+    except Exception as exc:  # a crashed repair must never take the whole round down with it
+        ctx.failed[path] = f"{type(exc).__name__}: {exc}"
+        return path, False
+
+
+def verify_and_repair(ctx: BuildContext, use_llm_review: bool = True, max_parallel: int = MAX_PARALLEL_WRITES) -> list:
+    """Alternate deterministic checks / LLM review with targeted rewrites. Files with issues in the
+    same round are repaired concurrently (they're independent by this point - real ordering already
+    happened in the write phase); a second round catches anything a parallel repair missed. Returns
+    the issues still open after the last round."""
     reviewed = False
     for round_no in range(1, MAX_REPAIR_ROUNDS + 1):
         for note in sync_meta_files(ctx.project_path, ctx.written):
@@ -1339,19 +1426,22 @@ def verify_and_repair(ctx: BuildContext, use_llm_review: bool = True) -> list:
         issues = collect_issues(ctx.written, ctx.plan, ctx.analysis, ctx.project_path)
         if not issues and use_llm_review and HAS_LLM and not reviewed:
             reviewed = True
-            ctx.progress("static checks clean - running LLM review")
+            ctx.progress("static checks clean - running LLM review", phase="verifying")
             issues = llm_review(ctx)
         if not issues:
             return []
         by_path = defaultdict(list)
         for i in issues:
             by_path[i["path"]].append(i["problem"])
-        ctx.progress(f"repair round {round_no}: {len(issues)} issue(s) in {len(by_path)} file(s)")
-        # repair leaf dependencies first so dependants see the corrected code
-        order = [f["path"] for f in ctx.plan["files"] if f["path"] in by_path] + [p for p in by_path if p not in {f['path'] for f in ctx.plan['files']}]
-        for p in order:
-            ctx.progress(f"repairing {p}")
-            repair_file(ctx, p, by_path[p])
+        ctx.progress(f"repair round {round_no}: {len(issues)} issue(s) in {len(by_path)} file(s)",
+                     phase="repairing", current=round_no - 1, total=MAX_REPAIR_ROUNDS)
+        workers = max(1, min(max_parallel, len(by_path)))
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="repair") as ex:
+            futures = [ex.submit(_repair_safe, ctx, p, probs) for p, probs in by_path.items()]
+            for fut in as_completed(futures):
+                p, ok = fut.result()
+                ctx.progress(f"repaired {p}" if ok else f"repair left issues in {p}",
+                             phase="repairing", current=round_no, total=MAX_REPAIR_ROUNDS)
     for note in sync_meta_files(ctx.project_path, ctx.written):
         ctx.progress(f"auto-fix {note}")
     return collect_issues(ctx.written, ctx.plan, ctx.analysis, ctx.project_path)
@@ -1403,9 +1493,15 @@ def read_manifest(name: str) -> Optional[dict]:
         return None
 
 
-def build_complete_project(flow: Any, project_name: str = "server-flow-api", progress: Callable[[str], None] = log,
-                           use_llm_review: bool = True, overwrite: bool = True) -> dict:
+def build_complete_project(flow: Any, project_name: str = "server-flow-api", progress: Callable = log,
+                           use_llm_review: bool = True, overwrite: bool = True,
+                           max_parallel: int = MAX_PARALLEL_WRITES) -> dict:
+    """`progress` may be the plain `log(msg)` or a richer `progress(msg, phase=, current=, total=)` -
+    both work since `log` accepts and ignores the extra kwargs. `max_parallel` caps how many files are
+    written/repaired at once within a dependency wave (raise it if your LLM backend has headroom for
+    more concurrent requests, lower it if you're hitting rate limits)."""
     started = time.time()
+    max_parallel = max(1, min(int(max_parallel or MAX_PARALLEL_WRITES), 15))
     try:
         graph = normalize_flow(flow)
     except FlowError as exc:
@@ -1435,33 +1531,62 @@ def build_complete_project(flow: Any, project_name: str = "server-flow-api", pro
                           files_written=write_offline_project(root, name, analysis), files_failed={}, issues_remaining=[])
             report["warnings"].append("LLM unavailable: only a bare skeleton was written; the workflow was NOT implemented.")
             save_manifest(name, graph, {"files": []}, report)
+            progress(f"[{name}] done: offline_template", phase="done", current=1, total=1)
             return report
 
         # ---- PLAN ----
-        progress(f"[{name}] planning ({len(graph['nodes'])} nodes, {len(analysis['routes'])} routes)")
+        progress(f"[{name}] planning ({len(graph['nodes'])} nodes, {len(analysis['routes'])} routes)",
+                 phase="planning", current=0, total=1)
         plan, notes = plan_project_with_llm(graph, analysis, progress)
         plan_source = "llm"
         if plan is None:
             plan, plan_source = blueprint_plan(graph, analysis), "blueprint"
-            progress(f"[{name}] LLM planning failed - using graph blueprint as the file plan ({'; '.join(notes)[:200]})")
+            progress(f"[{name}] LLM planning failed - using graph blueprint as the file plan ({'; '.join(notes)[:200]})",
+                     phase="planning", current=1, total=1)
         elif notes:
             report["warnings"] += [f"planning: {n}" for n in notes]
-        progress(f"[{name}] plan: {len(plan['files'])} files ({plan_source})")
 
         ctx = BuildContext(graph=graph, analysis=analysis, plan=plan, project_path=root, progress=progress)
 
-        # ---- WRITE ----
+        # ---- WRITE (dependency-wave parallel) ----
+        waves = compute_waves(plan["files"])
+        by_path = {f["path"]: f for f in plan["files"]}
         total = len(plan["files"])
-        for i, spec in enumerate(plan["files"], 1):
-            progress(f"[{name}] writing {i}/{total}: {spec['path']}")
-            ok, note = write_one_file(ctx, spec)
-            if not ok and spec["path"] not in ctx.written:
-                ctx.failed[spec["path"]] = note
-                progress(f"[{name}] FAILED {spec['path']}: {note}")
+        progress(f"[{name}] plan: {total} files ({plan_source}), writing in {len(waves)} wave(s), "
+                 f"up to {max_parallel} file(s) in parallel", phase="writing", current=0, total=total)
+
+        write_started = time.time()
+        done_count = 0
+        count_lock = threading.Lock()
+
+        def write_safe(spec: dict) -> tuple:
+            try:
+                return spec["path"], write_one_file(ctx, spec)
+            except Exception as exc:  # a crashed write must never take the whole wave down with it
+                return spec["path"], (False, f"{type(exc).__name__}: {exc}")
+
+        for wave in waves:
+            specs = [by_path[p] for p in wave]
+            workers = max(1, min(max_parallel, len(specs)))
+            with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="write") as ex:
+                futures = [ex.submit(write_safe, s) for s in specs]
+                for fut in as_completed(futures):
+                    path, (ok, note) = fut.result()
+                    with count_lock:
+                        done_count += 1
+                        dc = done_count
+                    if not ok and path not in ctx.written:
+                        ctx.failed[path] = note
+                        progress(f"[{name}] FAILED {path}: {note}", phase="writing", current=dc, total=total)
+                    else:
+                        elapsed = time.time() - write_started
+                        eta = round((elapsed / dc) * (total - dc), 1) if dc else None
+                        suffix = f", ~{eta:.0f}s left" if eta else ""
+                        progress(f"[{name}] wrote {dc}/{total}: {path}{suffix}", phase="writing", current=dc, total=total)
 
         # ---- VERIFY + REPAIR ----
-        progress(f"[{name}] verifying")
-        remaining = verify_and_repair(ctx, use_llm_review)
+        progress(f"[{name}] verifying", phase="verifying", current=0, total=1)
+        remaining = verify_and_repair(ctx, use_llm_review, max_parallel)
 
         report.update(
             mode="llm_agent", plan_source=plan_source, files_written=sorted(ctx.written),
@@ -1471,7 +1596,9 @@ def build_complete_project(flow: Any, project_name: str = "server-flow-api", pro
         report["status"] = ("failed" if not ctx.written else
                             "complete" if not remaining and not report["files_failed"] else "complete_with_issues")
         save_manifest(name, graph, plan, report)
-        progress(f"[{name}] done: {report['status']} ({len(ctx.written)} files, {len(remaining)} open issue(s))")
+        final_phase = "failed" if report["status"] == "failed" else "done"
+        progress(f"[{name}] done: {report['status']} ({len(ctx.written)} files, {len(remaining)} open issue(s))",
+                 phase=final_phase, current=1, total=1)
         return report
     finally:
         with _ACTIVE_LOCK:
@@ -1507,22 +1634,41 @@ JOBS: dict = {}
 _JOBS_LOCK = threading.Lock()
 
 
-def _run_job(job_id: str, flow: Any, project_name: str, use_llm_review: bool) -> None:
+def _run_job(job_id: str, flow: Any, project_name: str, use_llm_review: bool, max_parallel: int) -> None:
     job = JOBS[job_id]
+    write_phase_started: dict = {}  # lazily set on the first "writing" update, used for the ETA estimate
 
-    def progress(msg: str) -> None:
+    def progress(msg: str, phase: Optional[str] = None, current: Optional[int] = None, total: Optional[int] = None) -> None:
         log(msg)
+        now = time.time()
         with _JOBS_LOCK:
             job["log"].append(f"{datetime.now().strftime('%H:%M:%S')} {msg}")
+            if phase:
+                job["phase"] = phase
+                if total is not None:
+                    job["total_steps"] = total
+                if current is not None:
+                    job["current_step"] = current
+                job["percent"] = phase_percent(phase, job.get("current_step"), job.get("total_steps"))
+                if phase == "writing" and current:
+                    start = write_phase_started.setdefault("t", now)
+                    avg = (now - start) / current
+                    remaining = max(0, (job.get("total_steps") or current) - current)
+                    job["eta_sec"] = round(avg * remaining, 1)
+                elif phase in ("verifying", "repairing"):
+                    job["eta_sec"] = None  # not enough signal to estimate this phase
+                elif phase in ("done", "failed"):
+                    job["eta_sec"] = 0
 
     try:
-        report = build_complete_project(flow, project_name, progress, use_llm_review)
+        report = build_complete_project(flow, project_name, progress, use_llm_review, max_parallel=max_parallel)
         with _JOBS_LOCK:
             job.update(status="done", report=report, finished=time.time())
     except Exception as exc:  # never let the worker thread die silently
         log(f"job {job_id} crashed: {exc!r}")
         with _JOBS_LOCK:
-            job.update(status="error", error=f"{type(exc).__name__}: {exc}", finished=time.time())
+            job.update(status="error", error=f"{type(exc).__name__}: {exc}", finished=time.time(),
+                       phase="failed", percent=100)
 
 
 # ==================================================================
@@ -1586,40 +1732,65 @@ def plan_project(flow: dict) -> str:
 
 @mcp.tool()
 def generate_server_from_flow(flow: dict, project_name: str = "server-flow-api", use_llm_review: bool = True,
-                              overwrite: bool = True) -> str:
-    """Generate the complete Express backend for a workflow (blocking). Plan -> write every file with the LLM ->
-    verify -> repair. For big flows prefer start_generation_job + get_job_status to avoid client timeouts."""
-    return _j(build_complete_project(flow, project_name, log, use_llm_review, overwrite))
+                              overwrite: bool = True, max_parallel: int = MAX_PARALLEL_WRITES) -> str:
+    """Generate the complete Express backend for a workflow (blocking). Plan -> write every file with the LLM
+    (files with no dependency on each other are written concurrently, up to max_parallel at once) -> verify ->
+    repair. For big flows prefer start_generation_job + get_job_status so a frontend can show real progress
+    and so the call doesn't sit open for minutes."""
+    return _j(build_complete_project(flow, project_name, log, use_llm_review, overwrite, max_parallel))
 
 
 @mcp.tool()
-def start_generation_job(flow: dict, project_name: str = "server-flow-api", use_llm_review: bool = True) -> str:
-    """Start generation in the background and return a job_id immediately. Poll with get_job_status."""
+def start_generation_job(flow: dict, project_name: str = "server-flow-api", use_llm_review: bool = True,
+                         max_parallel: int = MAX_PARALLEL_WRITES) -> str:
+    """Start generation in the background and return a job_id immediately. Poll with get_job_status, which
+    returns a structured `phase`/`percent`/`eta_sec` a frontend loading bar can drive directly.
+    max_parallel: how many files may be written/repaired concurrently (default 5; raise for more speed if
+    your LLM backend can take the concurrent load, lower it if you start seeing rate-limit errors)."""
     try:
         normalize_flow(flow)
     except FlowError as exc:
         return _j({"status": "invalid_flow", "errors": exc.errors})
     job_id = uuid.uuid4().hex[:8]
     with _JOBS_LOCK:
-        JOBS[job_id] = {"id": job_id, "project": project_name, "status": "running", "log": [], "started": time.time()}
+        JOBS[job_id] = {"id": job_id, "project": project_name, "status": "running", "log": [],
+                        "started": time.time(), "phase": "planning", "current_step": 0, "total_steps": 0,
+                        "percent": 0, "eta_sec": None}
         for old in sorted(JOBS, key=lambda k: JOBS[k]["started"])[:-20]:  # keep the last 20 jobs
             JOBS.pop(old, None)
-    threading.Thread(target=_run_job, args=(job_id, flow, project_name, use_llm_review), daemon=True).start()
-    return _j({"job_id": job_id, "status": "running"})
+    threading.Thread(target=_run_job, args=(job_id, flow, project_name, use_llm_review, max_parallel), daemon=True).start()
+    return _j({"job_id": job_id, "status": "running", "phase": "planning", "percent": 0})
 
 
 @mcp.tool()
 def get_job_status(job_id: str = "", tail: int = 15) -> str:
-    """Status, recent progress log and (when finished) the final report of a generation job. Empty job_id lists jobs."""
+    """Poll one generation job. Returns status, a structured progress block a frontend loading bar can
+    render directly (phase, current_step/total_steps, percent 0-100, elapsed_sec, eta_sec), a tail of the
+    human-readable log, and - once finished - the final report. Empty job_id lists all known jobs."""
     with _JOBS_LOCK:
         if not job_id:
-            return _j([{"id": j["id"], "project": j["project"], "status": j["status"]} for j in JOBS.values()])
+            return _j([{"id": j["id"], "project": j["project"], "status": j["status"], "percent": j.get("percent", 0)}
+                       for j in JOBS.values()])
         job = JOBS.get(job_id)
         if not job:
             return f"Unknown job_id {job_id!r}."
-        view = {k: v for k, v in job.items() if k not in ("log", "started", "finished")}
-        view["log_tail"] = job["log"][-max(1, tail):]
-        view["elapsed_sec"] = round((job.get("finished") or time.time()) - job["started"], 1)
+        elapsed = round((job.get("finished") or time.time()) - job["started"], 1)
+        view = {
+            "id": job["id"], "project": job["project"], "status": job["status"],
+            "progress": {
+                "phase": job.get("phase", "queued"),
+                "current_step": job.get("current_step", 0),
+                "total_steps": job.get("total_steps", 0),
+                "percent": job.get("percent", 0),
+                "elapsed_sec": elapsed,
+                "eta_sec": job.get("eta_sec"),
+            },
+            "log_tail": job["log"][-max(1, tail):],
+        }
+        if job["status"] == "error":
+            view["error"] = job.get("error")
+        if job["status"] == "done":
+            view["report"] = job.get("report")
         return _j(view)
 
 
