@@ -115,10 +115,15 @@ async def download_project(
                 key=lambda d: os.path.getmtime(os.path.join(PROJECT_DIR, d))
             )
 
-        target_path = os.path.join(PROJECT_DIR, target_project)
+        project_root = os.path.realpath(PROJECT_DIR)
+        target_path = os.path.realpath(os.path.join(PROJECT_DIR, target_project))
+        if not target_path.startswith(f"{project_root}{os.sep}"):
+            raise HTTPException(status_code=400, detail="Invalid project path")
+
+        safe_project_name = sanitize_project_suffix(target_project) or "project"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"server_flow_{target_project}_{timestamp}"
+        zip_filename = f"server_flow_download_{timestamp}"
         zip_path = os.path.join(BASE_DIR, f"{zip_filename}.zip")
 
         shutil.make_archive(
@@ -132,7 +137,7 @@ async def download_project(
 
         cloudinary_url = None
         try:
-            cloudinary_url = upload_zip(zip_path, target_project)
+            cloudinary_url = upload_zip(zip_path, safe_project_name)
         except Exception:
             cloudinary_url = None
 
@@ -145,7 +150,7 @@ async def download_project(
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"{target_project}.zip",
+            filename=f"{safe_project_name}.zip",
             headers=headers,
         )
 
