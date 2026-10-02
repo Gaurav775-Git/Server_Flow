@@ -332,7 +332,10 @@ const Chat_Box = () => {
       await runBuildLegacy(configuration)
     }
 
-    window.location.assign('/playground/download')
+    const nextPath = projectId
+      ? `/playground/download?projectId=${encodeURIComponent(projectId)}`
+      : '/playground/download'
+    window.location.assign(nextPath)
   }
 
   // Start the full build flow from the only visible Build button.

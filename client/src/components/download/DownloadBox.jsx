@@ -1,10 +1,40 @@
 import styles from "./Download.module.css";
+import { saveCloudinaryUrl } from "../../utils/projectApi";
 
 const backendUrl = (
   import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_SERVER_URL || 'http://localhost:8001'
 ).replace(/\/$/, '')
 
 const DownloadBox = () => {
+  const projectId = new URLSearchParams(window.location.search).get("projectId");
+
+  const handleDownload = async () => {
+    const url = new URL(`${backendUrl}/download`);
+    if (projectId) {
+      url.searchParams.set("project_id", projectId);
+    }
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error("Download failed");
+    }
+
+    const cloudinaryUrl = response.headers.get("x-cloudinary-url");
+    if (cloudinaryUrl && projectId) {
+      await saveCloudinaryUrl(projectId, cloudinaryUrl);
+    }
+
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `${projectId || "server-flow-project"}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(objectUrl);
+  };
+
   return (
     <div className="w-full min-h-[550px] text-white flex justify-center relative">
       <div className="w-full flex flex-col justify-center items-center gap-1.5">
@@ -44,7 +74,7 @@ const DownloadBox = () => {
             <path d="M12 4l0 12" />
           </svg>
 
-          <span className={styles.button__text} onClick={() => window.location.href = `${backendUrl}/download`}>Download</span></button>
+          <span className={styles.button__text} onClick={() => { handleDownload().catch(console.error); }}>Download</span></button>
         <p className="text-gray-600 text-xs mt-5">ZIP archive • Ready to run</p>
       </div>
     </div>

@@ -3,6 +3,7 @@ import shutil
 import os
 import sys
 import traceback
+import re
 from datetime import datetime
 from typing import Optional
 from dotenv import load_dotenv
@@ -28,6 +29,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Cloudinary-Url"],
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +62,10 @@ def list_project_dirs() -> list[str]:
     ]
 
 
+def sanitize_project_suffix(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "_", value).strip("_")
+
+
 @app.get("/")
 async def root():
     return {"message": "Server Flow MCP Service", "status": "running"}
@@ -74,6 +80,7 @@ async def health():
 async def download_project(
     background_tasks: BackgroundTasks,
     project_name: Optional[str] = None,
+    project_id: Optional[str] = None,
 ):
     try:
         if not os.path.exists(PROJECT_DIR):
@@ -83,7 +90,19 @@ async def download_project(
         if not subdirs:
             raise HTTPException(status_code=404, detail="No project found")
 
-        if project_name:
+        if project_id:
+            normalized_project_id = sanitize_project_suffix(project_id)
+            project_from_id = f"project_{normalized_project_id}" if normalized_project_id else ""
+            if project_from_id in subdirs:
+                target_project = project_from_id
+            elif project_id in subdirs:
+                target_project = project_id
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Project for project_id '{project_id}' not found. Available: {subdirs}",
+                )
+        elif project_name:
             if project_name not in subdirs:
                 raise HTTPException(
                     status_code=404,
@@ -111,12 +130,23 @@ async def download_project(
         if not os.path.exists(zip_path):
             raise HTTPException(status_code=500, detail="Failed to create zip file")
 
+        cloudinary_url = None
+        try:
+            cloudinary_url = upload_zip(zip_path, target_project)
+        except Exception:
+            cloudinary_url = None
+
         background_tasks.add_task(cleanup_zip, zip_path)
+
+        headers = {}
+        if cloudinary_url:
+            headers["X-Cloudinary-Url"] = cloudinary_url
 
         return FileResponse(
             zip_path,
             media_type="application/zip",
-            filename=f"{target_project}.zip"
+            filename=f"{target_project}.zip",
+            headers=headers,
         )
 
     except HTTPException:
@@ -157,7 +187,11 @@ async def handle_chat(req: ChatRequest):
             }
 
             if req.master_json is not None:
-                project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                if req.project_id:
+                    normalized_project_id = sanitize_project_suffix(req.project_id)
+                    project_name = f"project_{normalized_project_id}" if normalized_project_id else f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                else:
+                    project_name = f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
                 validation_result = await session.call_tool(
                     "validate_flow", {"flow": req.master_json}
@@ -250,4 +284,3 @@ async def chat(req: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
