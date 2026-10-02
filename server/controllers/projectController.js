@@ -38,7 +38,7 @@ const getProjects = async (req, res) => {
     const userId = req.user.id;
 
     const result = await query(
-      `SELECT id, name, description, status, created_at, updated_at 
+      `SELECT id, name, description, status, created_at, updated_at, cloudinary_url
        FROM projects 
        WHERE user_id = $1 
        ORDER BY updated_at DESC`,
@@ -182,10 +182,55 @@ const deleteProject = async (req, res) => {
   }
 };
 
+const saveCloudinaryUrl = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cloudinary_url } = req.body;
+    const userId = req.user.id;
+
+    if (!cloudinary_url) {
+      return res.status(400).json({
+        success: false,
+        message: "Cloudinary URL is required"
+      });
+    }
+
+    const result = await query(
+      `UPDATE projects
+       SET cloudinary_url = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, name, description, status, created_at, updated_at, cloudinary_url`,
+      [cloudinary_url, id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cloudinary URL saved successfully",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("Save Cloudinary URL error:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   createProject,
   getProjects,
   getProject,
   updateProject,
-  deleteProject
+  deleteProject,
+  saveCloudinaryUrl
 };

@@ -42,3 +42,9 @@ export const deleteProject = (id) =>
   request(`/${id}`, {
     method: "DELETE",
   });
+
+export const saveCloudinaryUrl = (id, cloudinary_url) =>
+  request(`/${id}/cloudinary-url`, {
+    method: "PATCH",
+    body: JSON.stringify({ cloudinary_url }),
+  });

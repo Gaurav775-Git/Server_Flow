@@ -72,6 +72,7 @@ return (
               status={project.status}
               nodeCount={project.nodeCount}
               updatedAt={project.updatedAt}
+              cloudinaryUrl={project.cloudinary_url}
             />
           ))}
         </div>

@@ -5,12 +5,15 @@ import sys
 import traceback
 from datetime import datetime
 from typing import Optional
+from dotenv import load_dotenv
 from fastapi.responses import FileResponse
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+load_dotenv()
+from cloudinary_upload import upload_zip
 
 try:
     from llm import ask_llm
@@ -35,6 +38,7 @@ os.makedirs(PROJECT_DIR, exist_ok=True)
 class ChatRequest(BaseModel):
     message: str = ""
     master_json: dict | None = None
+    project_id: str | None = None
 
 
 def cleanup_zip(zip_path: str):
@@ -169,6 +173,24 @@ async def handle_chat(req: ChatRequest):
                 outcome = result.content[0].text
                 if result.isError:
                     return {"reply": f"Build error: {outcome}"}
+                try:
+                    outcome_data = json.loads(outcome)
+                    project_path = outcome_data.get("path")
+                    generated_project = outcome_data.get("project")
+
+                    if project_path and os.path.isdir(project_path):
+                        zip_base = os.path.join(BASE_DIR, f"{generated_project}_cloud")
+                        zip_path = shutil.make_archive(zip_base, "zip", project_path)
+                        cloudinary_url = upload_zip(zip_path, generated_project)
+                        os.remove(zip_path)
+
+                        return {
+                            "reply": outcome,
+                            "cloudinary_url": cloudinary_url,
+                            "project_id": req.project_id,
+                        }
+                except Exception as e:
+                    return {"reply": outcome, "cloudinary_error": str(e)}
                 return {"reply": outcome}
 
             try:
@@ -228,3 +250,4 @@ async def chat(req: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+

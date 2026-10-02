@@ -7,6 +7,7 @@ const {
 	getProject,
 	updateProject,
 	deleteProject,
+	saveCloudinaryUrl,
 } = require("../controllers/projectController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 
@@ -15,6 +16,7 @@ router.post("/createProject", createProject);
 router.post("/getProjects", getProjects);
 router.get("/", getProjects);
 router.get("/:id", getProject);
+router.patch("/:id/cloudinary-url", saveCloudinaryUrl);
 router.patch("/:id", updateProject);
 router.delete("/:id", deleteProject);
 

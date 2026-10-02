@@ -1,4 +1,4 @@
-const ProjectCard = ({ id, title, subtitle, status, nodeCount, updatedAt }) => {
+const ProjectCard = ({ id, title, subtitle, status, nodeCount, updatedAt, cloudinaryUrl }) => {
   const statusColors = {
     active: 'bg-emerald-500/20 text-emerald-400',
     draft: 'bg-yellow-500/20 text-yellow-400',
@@ -37,7 +37,18 @@ const ProjectCard = ({ id, title, subtitle, status, nodeCount, updatedAt }) => {
 
       <div className="mt-4 pt-3 border-t border-[#30363D] flex justify-between items-center text-xs text-[#bcc9ce]">
         <span>Updated {updatedAt ? new Date(updatedAt).toLocaleDateString() : 'N/A'}</span>
-        <button className="text-[#00d4ff] hover:underline">Open</button>
+        {cloudinaryUrl ? (
+          <a
+            href={cloudinaryUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#00d4ff] hover:underline"
+          >
+            Download ZIP
+          </a>
+        ) : (
+          <span className="text-[#6b7280]">ZIP unavailable</span>
+        )}
       </div>
     </div>
   );
