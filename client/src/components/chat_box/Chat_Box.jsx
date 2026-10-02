@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Build_Button from '../ui/Build_Button'
 import loadingGif from '../../assets/loading.gif'
+import { saveCloudinaryUrl } from '../../utils/projectApi'
 
 const backendUrl = 'https://server-flow-3.onrender.com'.replace(/\/$/, '')
 
@@ -35,6 +37,8 @@ const formatTime = (seconds) => {
 }
 
 const Chat_Box = () => {
+  const [searchParams] = useSearchParams()
+  const projectId = searchParams.get('projectId')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPreparing, setIsPreparing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -226,6 +230,7 @@ const Chat_Box = () => {
       },
       body: JSON.stringify({
         master_json: configuration,
+        project_id: projectId,
       }),
     })
 
@@ -275,8 +280,9 @@ const Chat_Box = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            master_json: configuration,
-          }),
+          master_json: configuration,
+          project_id: projectId,
+        }),
         }).then(async (res) => {
           if (!res.ok) {
             throw new Error('Unable to reach the Build Assistant.')
@@ -295,7 +301,9 @@ const Chat_Box = () => {
       buildRequest,
       new Promise((resolve) => setTimeout(resolve, 4200)),
     ])
-
+    if (result.cloudinary_url && projectId) {
+      await saveCloudinaryUrl(projectId, result.cloudinary_url)
+    }
     setMessages((prev) => [
       ...prev,
       {
