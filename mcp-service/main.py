@@ -135,17 +135,21 @@ async def download_project(
         if not os.path.exists(zip_path):
             raise HTTPException(status_code=500, detail="Failed to create zip file")
 
+        upload_identifier = sanitize_project_suffix(project_id) if project_id else safe_project_name
         cloudinary_url = None
+        cloudinary_error = None
         try:
-            cloudinary_url = upload_zip(zip_path, safe_project_name)
-        except Exception:
-            cloudinary_url = None
+            cloudinary_url = upload_zip(zip_path, upload_identifier)
+        except Exception as exc:
+            cloudinary_error = str(exc)
 
         background_tasks.add_task(cleanup_zip, zip_path)
 
         headers = {}
         if cloudinary_url:
             headers["X-Cloudinary-Url"] = cloudinary_url
+        if cloudinary_error:
+            headers["X-Cloudinary-Error"] = cloudinary_error[:250]
 
         return FileResponse(
             zip_path,
@@ -220,7 +224,8 @@ async def handle_chat(req: ChatRequest):
                     if project_path and os.path.isdir(project_path):
                         zip_base = os.path.join(BASE_DIR, f"{generated_project}_cloud")
                         zip_path = shutil.make_archive(zip_base, "zip", project_path)
-                        cloudinary_url = upload_zip(zip_path, generated_project)
+                        upload_identifier = sanitize_project_suffix(req.project_id) if req.project_id else generated_project
+                        cloudinary_url = upload_zip(zip_path, upload_identifier)
                         os.remove(zip_path)
 
                         return {
